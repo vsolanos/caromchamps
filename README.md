@@ -1,8 +1,8 @@
-# CaromChamps v5.1.0
+# CaromChamps v5.2.0
 
 Actualización funcional y visual enfocada en producción web: pantalla de ingreso premium, modo claro por defecto, menú colapsable, perfil de usuario, fechas localizadas por idioma, reapertura controlada de grupos, mejora del PDF continuo R32/Dieciseisavos y primera versión de campeonatos tipo Ranking.
 
-## Cambios principales v5.1.0
+## Cambios principales v5.2.0
 
 - Pantalla de login/registro rediseñada con diseño visual profesional y acceso social.
 - Modo claro como tema por defecto para nuevos usuarios/campeonatos.
@@ -16,13 +16,13 @@ Actualización funcional y visual enfocada en producción web: pantalla de ingre
 - PDF continuo de llave con Dieciseisavos/R32 ampliado para aprovechar mejor la hoja Legal.
 - Nueva funcionalidad Ranking: campeonatos tipo Ranking, reglas de puntuación configurables y tabla acumulada por jugadores.
 
-# CaromChamps — Plataforma de Campeonatos v5.0
+# CaromChamps — Plataforma de Campeonatos v5.2
 
-CaromChamps v5.0 introduce la primera capa de plataforma multiusuario con Supabase: autenticación por correo, Google y Facebook, perfiles de usuario, rol Admin, separación de datos por usuario, sincronización de estado en Supabase y enlaces compartidos de campeonatos para usuarios activos.
+CaromChamps v5.2 introduce la primera capa de plataforma multiusuario con Supabase: autenticación por correo, Google y Facebook, perfiles de usuario, rol Admin, separación de datos por usuario, sincronización de estado en Supabase y enlaces compartidos de campeonatos para usuarios activos.
 
 ## Configuración Supabase requerida
 
-Antes de publicar v5.0, ejecutar en Supabase el script:
+Antes de publicar v5.2, ejecutar en Supabase el script:
 
 ```text
 docs/supabase_schema_v5.sql
@@ -55,7 +55,7 @@ npm.cmd run build
 npm.cmd run dev
 ```
 
-## Cambios principales v5.0
+## Cambios principales v5.2
 
 - Pantalla inicial de CaromChamps con login y registro.
 - Registro con nombre, correo, país, código telefónico, teléfono validado y foto opcional de perfil.
@@ -374,3 +374,8 @@ src/
 - En PDF de Llave Continua Todo 1 Página, la columna de Octavos/R16 se reduce 25% para evitar información estrujada o traslapada.
 - Se mantiene la geometría estable de fases anteriores, fase activa y conexiones.
 
+
+
+### Nota v5.2.0
+
+Esta versión corrige un error crítico posterior al login que podía dejar la aplicación en blanco y agrega una pantalla de recuperación ante errores de runtime.

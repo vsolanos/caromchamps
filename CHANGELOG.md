@@ -1,5 +1,13 @@
 
-## v5.1.0 - Ajustes de usabilidad, ranking y producción
+## v5.2.0 - Corrección crítica de acceso post-login
+
+- Corrige error crítico que dejaba la aplicación en blanco después de iniciar sesión.
+- Agrega estado faltante `menuCollapsed` requerido por el shell principal de la aplicación.
+- Agrega `AppErrorBoundary` para evitar pantallas completamente en blanco ante errores de runtime.
+- Mantiene la integración Supabase, pantalla de inicio v5.1, perfil, menú colapsable y funcionalidades Ranking.
+
+
+## v5.2.0 - Ajustes de usabilidad, ranking y producción
 
 - Rediseño completo de pantalla de ingreso basado en layout premium de CaromChamps.
 - Tema inicial cambiado a modo claro.
@@ -16,7 +24,7 @@
 
 # Changelog
 
-## v5.0.0
+## v5.2.0
 
 - Nueva pantalla de inicio con autenticación Supabase.
 - Registro con nombre, correo, país, código telefónico, teléfono validado y foto opcional de perfil.

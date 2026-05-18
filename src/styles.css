@@ -3296,3 +3296,30 @@ body.printing-pdf .num-cell { color: #1d4ed8 !important; background: #dbeafe !im
     max-width: var(--bracket-column-width, 392px) !important;
   }
 }
+
+
+/* v5.2.0 - pantalla de recuperación ante errores críticos */
+.app-error-boundary {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: linear-gradient(135deg, #dbeafe, #ffffff);
+}
+.app-error-card {
+  max-width: 820px;
+  width: 100%;
+  border: 1px solid rgba(30, 64, 175, 0.18);
+}
+.app-error-card h1 {
+  margin-top: 0;
+  color: #0b2d6b;
+}
+.app-error-card pre {
+  white-space: pre-wrap;
+  background: #f8fafc;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 12px;
+  color: #991b1b;
+}

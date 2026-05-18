@@ -94,6 +94,36 @@ function formatAppVersion(version) {
 }
 
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error('CaromChamps runtime error', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return E('div', { className: 'app-error-boundary' },
+        E(Card, { className: 'app-error-card' },
+          E('h1', null, 'CaromChamps encontró un problema al cargar la aplicación'),
+          E('p', null, 'Se evitó que la pantalla quedara completamente en blanco. Copie el detalle técnico si necesita soporte.'),
+          E('pre', null, String(this.state.error?.message || this.state.error)),
+          E('div', { className: 'toolbar' },
+            E(Button, { kind: 'primary', onClick: () => window.location.reload() }, 'Recargar'),
+            E(Button, { kind: 'soft', onClick: async () => { try { localStorage.clear(); sessionStorage.clear(); } catch {} window.location.href = '/'; } }, 'Limpiar sesión local')
+          )
+        )
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 function normalizePlayerNameKey(player) {
   return `${player?.first_name || ''} ${player?.last_name || ''}`
     .normalize('NFD')
@@ -205,6 +235,7 @@ function AppShell({ auth }) {
   const [seeds, setSeeds] = useState(saved?.seeds || []);
   const [items, setItems] = useState(saved?.items || []);
   const [tab, setTab] = useState('dashboard');
+  const [menuCollapsed, setMenuCollapsed] = useState(false);
   const [activeId, setActiveId] = useState(saved?.activeId || initialChampionship.championship_id);
   const [championships, setChampionships] = useState(saved?.championships || [makeChampionshipSnapshot(initialChampionship, saved?.groups || [], saved?.matches || [], saved?.seeds || [])]);
   const [historyPlayerId, setHistoryPlayerId] = useState('');
@@ -415,9 +446,11 @@ ${link}`);
 }
 
 export default function App() {
-  return E(AuthGate, { render: (auth) => {
-    const token = sharedTokenFromLocation();
-    if (token) return E(SharedChampionshipView, { token, auth });
-    return E(AppShell, { key: auth.user?.id, auth });
-  } });
+  return E(AppErrorBoundary, null,
+    E(AuthGate, { render: (auth) => {
+      const token = sharedTokenFromLocation();
+      if (token) return E(SharedChampionshipView, { token, auth });
+      return E(AppShell, { key: auth.user?.id, auth });
+    } })
+  );
 }
