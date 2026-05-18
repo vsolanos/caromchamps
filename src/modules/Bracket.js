@@ -1,0 +1,507 @@
+import { useMemo, useRef, useState } from 'react';
+import { E, Card, Button, Badge, EmptyState, Field, Select, SectionTitle, Input } from '../components/ui.js';
+import { PdfControls, PdfDocument } from '../components/Print.js';
+import { PlayerHistoryTrigger } from '../components/PlayerHistory.js';
+import { startPdfPrint } from '../lib/print.js';
+import {
+  autoFillMatches,
+  generateBracketStructure,
+  generateMainBracketAfterPre,
+  generateInitialRoundFromSeeds,
+  generateNextRound,
+  mergeWithProjectedSchedule,
+  latestActiveKoRound,
+  matchCode,
+  matchDetailedScore,
+  matchDisplayStatus,
+  matchPlayerStats,
+  matchRoundKey,
+  matchRoundLabel,
+  playerInitials,
+  playerName,
+  roundDisplayName,
+  resolveMatchPlayer,
+  fmtAvg,
+  num
+} from '../lib/tournament.js';
+
+const FLAG_STRIPES = {
+  CR: ['#002b7f', '#ffffff', '#ce1126', '#ce1126', '#ffffff', '#002b7f'],
+  CO: ['#fcd116', '#fcd116', '#003893', '#ce1126'],
+  MX: ['#006847', '#ffffff', '#ce1126'],
+  PA: ['#ffffff', '#005293', '#d21034'],
+  US: ['#b22234', '#ffffff', '#b22234', '#ffffff', '#3c3b6e'],
+  VE: ['#fcd116', '#003893', '#ce1126'],
+  EC: ['#ffdd00', '#ffdd00', '#034ea2', '#ed1c24'],
+  AR: ['#74acdf', '#ffffff', '#f6b40e', '#ffffff', '#74acdf'],
+  BR: ['#009b3a', '#ffdf00', '#002776'],
+  CL: ['#ffffff', '#0039a6', '#d52b1e'],
+  PE: ['#d91023', '#ffffff', '#d91023'],
+  OTHER: ['#cbd5e1', '#f8fafc', '#94a3b8']
+};
+
+function roundOrder(round) {
+  const order = { R0: 0, R128: 1, R64: 2, R32: 3, R16: 4, QF: 5, SF: 6, F: 7 };
+  return order[round] ?? 99;
+}
+
+function shortRound(round) {
+  const labels = { R0: 'R0', R128: 'R128', R64: 'R64', R32: 'Dieciseisavos', R16: 'Octavos', QF: 'Cuartos', SF: 'Semis', F: 'Final' };
+  return labels[round] || roundDisplayName(round);
+}
+
+function mergeById(original, updates) {
+  const updateMap = new Map(updates.map((m) => [m.match_id, m]));
+  return original.map((m) => updateMap.get(m.match_id) || m);
+}
+
+function safeFileName(value) {
+  return String(value || 'bracket-fecobi')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9-_]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+}
+
+function starPoints(cx, cy, outer, inner, arms = 5) {
+  return Array.from({ length: arms * 2 }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI) / arms;
+    const radius = index % 2 === 0 ? outer : inner;
+    return `${(cx + Math.cos(angle) * radius).toFixed(2)},${(cy + Math.sin(angle) * radius).toFixed(2)}`;
+  }).join(' ');
+}
+
+function flagShapes(normalized, colors) {
+  if (normalized === 'PA') {
+    return [
+      E('rect', { key: 'pa-bg', x: 0, y: 0, width: 36, height: 24, fill: '#ffffff' }),
+      E('rect', { key: 'pa-red', x: 18, y: 0, width: 18, height: 12, fill: '#d21034' }),
+      E('rect', { key: 'pa-blue', x: 0, y: 12, width: 18, height: 12, fill: '#005293' }),
+      E('polygon', { key: 'pa-star-blue', points: starPoints(9, 6, 3.2, 1.35), fill: '#005293' }),
+      E('polygon', { key: 'pa-star-red', points: starPoints(27, 18, 3.2, 1.35), fill: '#d21034' })
+    ];
+  }
+  if (normalized === 'DO') {
+    return [
+      E('rect', { key: 'do-bg', x: 0, y: 0, width: 36, height: 24, fill: '#ffffff' }),
+      E('rect', { key: 'do-blue-1', x: 0, y: 0, width: 15, height: 9.5, fill: '#002d62' }),
+      E('rect', { key: 'do-red-1', x: 21, y: 0, width: 15, height: 9.5, fill: '#ce1126' }),
+      E('rect', { key: 'do-red-2', x: 0, y: 14.5, width: 15, height: 9.5, fill: '#ce1126' }),
+      E('rect', { key: 'do-blue-2', x: 21, y: 14.5, width: 15, height: 9.5, fill: '#002d62' }),
+      E('circle', { key: 'do-seal', cx: 18, cy: 12, r: 2.3, fill: '#ffffff', stroke: '#0f766e', 'strokeWidth': .75 }),
+      E('circle', { key: 'do-seal-red', cx: 18, cy: 12, r: .75, fill: '#ce1126' })
+    ];
+  }
+  if (normalized === 'CR') {
+    return [
+      E('rect', { key: 'cr-blue-top', x: 0, y: 0, width: 36, height: 4, fill: '#002b7f' }),
+      E('rect', { key: 'cr-white-top', x: 0, y: 4, width: 36, height: 4, fill: '#ffffff' }),
+      E('rect', { key: 'cr-red', x: 0, y: 8, width: 36, height: 8, fill: '#ce1126' }),
+      E('rect', { key: 'cr-white-bottom', x: 0, y: 16, width: 36, height: 4, fill: '#ffffff' }),
+      E('rect', { key: 'cr-blue-bottom', x: 0, y: 20, width: 36, height: 4, fill: '#002b7f' })
+    ];
+  }
+  const stripeHeight = 24 / colors.length;
+  return colors.map((color, index) => E('rect', { key: `${normalized}-${index}`, x: 0, y: index * stripeHeight, width: 36, height: stripeHeight + 0.1, fill: color }));
+}
+
+function Flag({ code = 'CR' }) {
+  const normalized = String(code || 'OTHER').toUpperCase();
+  const colors = FLAG_STRIPES[normalized] || FLAG_STRIPES.OTHER;
+  return E('span', { className: 'flag-icon bracket-flag flag-polished', title: normalized },
+    E('svg', { viewBox: '0 0 36 24', role: 'img', 'aria-label': normalized, focusable: 'false' },
+      E('rect', { x: 0, y: 0, width: 36, height: 24, rx: 3, fill: '#ffffff' }),
+      ...flagShapes(normalized, colors),
+      E('rect', { x: .5, y: .5, width: 35, height: 23, rx: 2.5, fill: 'none', stroke: 'rgba(15,23,42,.28)', 'strokeWidth': 1 })
+    )
+  );
+}
+
+function Avatar({ player }) {
+  if (player?.photo_url) return E('img', { className: 'bracket-avatar', src: player.photo_url, alt: playerName(player), onError: (e) => { e.currentTarget.style.display = 'none'; } });
+  return E('div', { className: 'bracket-avatar placeholder' }, playerInitials(player));
+}
+
+function playerMetricRow(stats) {
+  return E('div', { className: 'bracket-stat-row' },
+    E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'CAR'), ' ', stats.caroms),
+    E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'ENT'), ' ', stats.innings),
+    E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'PROM'), ' ', stats.avg)
+  );
+}
+
+function PlayerLine({ match, playerMap, side, compact = false, allMatches = [] }) {
+  const stats = matchPlayerStats(match, side);
+  const resolved = resolveMatchPlayer(match, side, allMatches, playerMap);
+  const player = resolved.player || playerMap[stats.player_id];
+  const seed = side === 1 ? match.seed1_position : match.seed2_position;
+  return E('div', { className: `bracket-player-line ${stats.is_winner ? 'winner' : ''} ${compact ? 'compact' : ''}` },
+    E('div', { className: 'bracket-seed' }, seed || '-'),
+    E(Avatar, { player }),
+    E('div', { className: 'bracket-player-info' },
+      E('div', { className: 'bracket-name-line' }, E(Flag, { code: player?.country_iso }), E('b', null, player ? E(PlayerHistoryTrigger, { player }) : resolved.label)),
+      playerMetricRow(stats),
+      compact ? null : E('div', { className: 'bracket-serie-row' }, `SM1 ${stats.s1} · SM2 ${stats.s2}${stats.penalties ? ` · PEN ${stats.penalties}` : ''}`)
+    ),
+    E('div', { className: `bracket-score ${stats.is_winner ? 'winner' : ''}` }, stats.caroms || '-')
+  );
+}
+
+function MatchCard({ match, playerMap, allMatches = [], roundIndex = 0, connectorHeight = 0, top = 0, cardHeight = 138, isCurrentRound = false }) {
+  const winnerName = match.winner_id ? playerName(playerMap[match.winner_id]) : '';
+  const cardStyle = {
+    top: `${top}px`,
+    '--card-height': `${cardHeight}px`,
+    height: `${cardHeight}px`,
+    minHeight: `${cardHeight}px`,
+    width: '100%',
+    boxSizing: 'border-box'
+  };
+  if (roundIndex > 0) cardStyle['--connector-height'] = `${connectorHeight}px`;
+  return E('article', { className: `continuous-match ${match.match_status === 'COMPLETED' ? 'completed' : 'pending'} ${roundIndex > 0 ? 'linked-round' : ''} ${match.source_match1_id || match.source_match2_id ? 'source-linked' : ''} ${isCurrentRound ? 'current-round-card' : ''}`, style: cardStyle },
+    roundIndex > 0 ? E('span', { className: 'continuous-connector' }) : null,
+    E('div', { className: 'continuous-match-head' },
+      E('div', null,
+        E('b', null, matchCode(match)),
+        E('span', { className: 'continuous-round-label' }, ` · ${matchRoundLabel(match)}`),
+        E('p', { className: 'continuous-match-meta' }, `Orden ${match.bracket_order || '-'} · ${matchDetailedScore(match)}`)
+      ),
+      E(Badge, { kind: match.match_status === 'COMPLETED' ? 'success' : 'neutral' }, matchDisplayStatus(match))
+    ),
+    E('div', { className: 'continuous-player-stack' },
+      E(PlayerLine, { match, playerMap, side: 1, allMatches }),
+      E(PlayerLine, { match, playerMap, side: 2, allMatches })
+    ),
+    winnerName ? E('div', { className: 'continuous-winner' }, `Ganador: ${winnerName}`) : null
+  );
+}
+
+function ChampionCard({ finalMatch, playerMap, top = 0 }) {
+  if (!finalMatch?.winner_id) return null;
+  return E('div', { className: 'champion-premium champion-under-final champion-right-of-final', style: { position: 'absolute', top: `${top}px`, left: 'calc(100% + 180px)', '--champion-left': 'calc(100% + 180px)', zIndex: 4 } },
+    E('span', { className: 'champion-link-line', 'aria-hidden': 'true' }),
+    E('div', { className: 'trophy' }, '🏆'),
+    E('span', null, 'Campeón / Ganador'),
+    E('b', null, playerName(playerMap[finalMatch.winner_id])),
+    E('small', null, 'Campeonato FECOBI')
+  );
+}
+
+function ContinuousView({ matches, playerMap }) {
+  const rounds = [...new Set(matches.map((m) => matchRoundKey(m)))].sort((a, b) => roundOrder(a) - roundOrder(b));
+  const finalMatch = matches.find((m) => matchRoundKey(m) === 'F' && m.winner_id);
+  // v4.7: use one unified card geometry for every round, including the active
+  // round. The active round is highlighted only at column level; it no longer
+  // receives a different card template, which prevents the final/current phase
+  // from collapsing or mixing with the champion node. R0 remains an aligned feeder.
+  const cardHeight = 332;
+  const rowGap = 30;
+  const slot = cardHeight + rowGap;
+  const columnWidth = 430;
+  const columnGap = 58;
+  const championReserve = finalMatch ? 720 : 0;
+  const hasPreRound = rounds.includes('R0');
+  const roundData = rounds.map((round) => ({
+    round,
+    rows: matches.filter((m) => matchRoundKey(m) === round).sort((a, b) => num(a.bracket_order) - num(b.bracket_order))
+  }));
+  const mainRoundData = hasPreRound ? roundData.filter((item) => item.round !== 'R0') : roundData;
+  const currentRound = [...roundData]
+    .reverse()
+    .find((item) => item.rows.some((match) => match.match_status !== 'COMPLETED' || !match.winner_id))?.round || rounds[rounds.length - 1] || '';
+  const visualIndexForRound = (round) => {
+    const index = mainRoundData.findIndex((item) => item.round === round);
+    return index >= 0 ? index : 0;
+  };
+  const baseSlots = Math.max(1, ...mainRoundData.map((item, index) => Math.max(1, item.rows.length) * Math.pow(2, index)), ...roundData.filter((item) => item.round === 'R0').map((item) => Math.max(1, item.rows.length)));
+  const finalVisualIndex = visualIndexForRound('F');
+  const finalTop = finalVisualIndex >= 0 ? ((Math.pow(2, finalVisualIndex) - 1) * slot) / 2 : 0;
+  const championGap = Math.round(cardHeight * 0.25);
+  const championHeight = finalMatch ? 132 : 0;
+  const requiredHeight = finalMatch ? finalTop + cardHeight + championGap + championHeight + 18 : ((baseSlots - 1) * slot) + cardHeight + 18;
+  const stackHeight = Math.max(560, ((baseSlots - 1) * slot) + cardHeight + 18, requiredHeight);
+
+  const cardTopByVisualIndex = (visualIndex, matchIndex) => {
+    const block = Math.pow(2, visualIndex);
+    return ((block - 1) * slot) / 2 + matchIndex * block * slot;
+  };
+
+  const preRoundTop = (match, fallbackIndex) => {
+    const firstMain = mainRoundData[0];
+    if (!firstMain) return fallbackIndex * slot;
+    const targetPosition = num(match.winner_takes_seed_position, 0);
+    const targetIndex = firstMain.rows.findIndex((candidate) => num(candidate.seed1_position, 0) === targetPosition || num(candidate.seed2_position, 0) === targetPosition);
+    if (targetIndex >= 0) return cardTopByVisualIndex(0, targetIndex);
+    return fallbackIndex * slot;
+  };
+
+  return E('div', { className: 'bracket-premium-panel bracket-stable-geometry-panel' },
+    E('div', { className: `bracket-rounds-continuous bracket-rounds-grid stable-bracket-grid ${hasPreRound ? 'has-pre-round' : ''} ${finalMatch ? 'has-champion-node' : ''}`, style: { '--bracket-column-width': `${columnWidth}px`, '--bracket-column-gap': `${columnGap}px` } }, roundData.map(({ round, rows }, roundIndex) => {
+      const isPre = round === 'R0';
+      const visualRoundIndex = isPre ? 0 : visualIndexForRound(round);
+      const block = Math.pow(2, visualRoundIndex);
+      const connectorHeight = !isPre && visualRoundIndex > 0 ? slot * Math.pow(2, visualRoundIndex - 1) : 0;
+      const hasChampionForRound = round === 'F' && !!finalMatch;
+      return E('section', { key: round, className: `bracket-round-premium round-key-${String(round).toLowerCase()} round-index-${roundIndex} visual-round-index-${visualRoundIndex} ${round === currentRound ? 'current-round-column' : ''} ${isPre ? 'pre-round-column' : ''} ${hasChampionForRound ? 'has-champion-column' : ''}`, style: { minHeight: stackHeight + 52, width: columnWidth + (hasChampionForRound ? championReserve : 0), minWidth: columnWidth + (hasChampionForRound ? championReserve : 0), flex: `0 0 ${columnWidth + (hasChampionForRound ? championReserve : 0)}px` } },
+        E('div', { className: 'round-premium-title' }, E('h3', null, shortRound(round)), E('span', null, `${rows.length * 2} jugadores`)),
+        E('div', { className: 'bracket-round-matches absolute-layout', style: { '--round-stack-height': `${stackHeight}px`, '--round-block': block, width: `${columnWidth}px`, maxWidth: `${columnWidth}px` } },
+          rows.map((m, index) => E(MatchCard, {
+            key: m.match_id,
+            match: m,
+            playerMap,
+            allMatches: matches,
+            roundIndex: isPre ? 0 : visualRoundIndex,
+            connectorHeight,
+            top: isPre ? preRoundTop(m, index) : cardTopByVisualIndex(visualRoundIndex, index),
+            cardHeight,
+            isCurrentRound: round === currentRound
+          })),
+          round === 'F' ? E(ChampionCard, { finalMatch, playerMap, top: cardTopByVisualIndex(visualRoundIndex, 0) + Math.round(cardHeight * 0.12) }) : null
+        )
+      );
+    }))
+  );
+}
+
+function statsForTable(match, side) {
+  const s = matchPlayerStats(match, side);
+  const won = s.is_winner ? 1 : 0;
+  const completed = match.match_status === 'COMPLETED';
+  const draw = completed && !match.winner_id ? 1 : 0;
+  return {
+    ...s,
+    pj: completed ? 1 : 0,
+    pg: completed ? won : 0,
+    pe: draw,
+    pp: completed && !won && !draw ? 1 : 0,
+    puntos: completed ? (won ? 2 : draw ? 1 : 0) : 0
+  };
+}
+
+function TabularPlayerCell({ match, playerMap, side, allMatches = [] }) {
+  const stats = statsForTable(match, side);
+  const resolved = resolveMatchPlayer(match, side, allMatches, playerMap);
+  const player = resolved.player || playerMap[stats.player_id];
+  const seed = side === 1 ? match.seed1_position : match.seed2_position;
+  return E('div', { className: 'tabular-player-cell' },
+    E('span', { className: 'tabular-seed' }, seed || '-'),
+    E(Avatar, { player }),
+    E('div', null,
+      E('div', { className: 'tabular-name' }, E(Flag, { code: player?.country_iso }), E('b', null, player ? E(PlayerHistoryTrigger, { player }) : resolved.label)),
+      E('div', { className: 'small' }, `${matchCode(match)} · ${matchRoundLabel(match)}`)
+    )
+  );
+}
+
+function TabularView({ matches, playerMap }) {
+  const rounds = [...new Set(matches.map((m) => matchRoundKey(m)))].sort((a, b) => roundOrder(a) - roundOrder(b));
+  return E('div', { className: 'bracket-tabular-panel' }, rounds.map((round) => {
+    const rows = matches.filter((m) => matchRoundKey(m) === round).sort((a, b) => num(a.bracket_order) - num(b.bracket_order));
+    return E('section', { key: round, className: 'bracket-table-section bracket-tabular-section' },
+      E('div', { className: 'bracket-table-section-title' }, shortRound(round).toUpperCase()),
+      E('div', { className: 'table-wrap bracket-table-wrap' },
+        E('table', { className: 'bracket-tabular-table' },
+          E('thead', null, E('tr', null, ['NUM', 'NOMBRE DEL JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'PUNTOS'].map((h) => E('th', { key: h }, h)))),
+          E('tbody', null, rows.flatMap((match, matchIndex) => [1, 2].map((side) => {
+            const stats = statsForTable(match, side);
+            return E('tr', { key: `${match.match_id}-${side}`, className: `${stats.is_winner ? 'tabular-winner-row' : ''}` },
+              E('td', { className: 'num-cell' }, side === 1 ? matchIndex + 1 : ''),
+              E('td', null, E(TabularPlayerCell, { match, playerMap, side, allMatches: matches })),
+              E('td', null, stats.pj),
+              E('td', null, stats.pg),
+              E('td', null, stats.pe),
+              E('td', null, stats.pp),
+              E('td', null, stats.caroms),
+              E('td', null, stats.innings),
+              E('td', null, stats.s1),
+              E('td', null, stats.s2),
+              E('td', { className: 'prom-cell' }, stats.avg),
+              E('td', { className: 'points-cell' }, stats.puntos)
+            );
+          })))
+        )
+      )
+    );
+  }));
+}
+
+
+function continuousPdfPreset(matches, selectedPageSize = 'Letter', selectedOrientation = 'portrait') {
+  const rounds = new Set(matches.map((match) => matchRoundKey(match)));
+  const hasLargeStartRound = ['R128', 'R64', 'R32'].some((round) => rounds.has(round));
+  const hasExtraFeederColumn = rounds.has('R0') && rounds.size >= 5;
+  const requiresLegal = hasLargeStartRound || hasExtraFeederColumn;
+  const requestedSize = String(selectedPageSize || 'Letter').toLowerCase() === 'legal' ? 'Legal' : 'Letter';
+  const normalizedSize = requiresLegal ? 'Legal' : requestedSize;
+  const key = normalizedSize === 'Legal' ? 'legal' : 'letter';
+  const orientationValue = selectedOrientation || 'portrait';
+  return {
+    key,
+    extraClass: requiresLegal ? 'bracket-continuous-r32plus' : 'bracket-continuous-standard',
+    pageSize: normalizedSize,
+    orientation: orientationValue,
+    scale: 'fit',
+    label: `${orientationValue === 'landscape' ? 'Horizontal' : 'Vertical'} ${normalizedSize === 'Legal' ? 'Legal' : 'Carta'} · Todo 1 Página${requiresLegal ? ' · Dieciseisavos+' : ''}`
+  };
+}
+
+function FaceToFaceView({ matches, playerMap }) {
+  const sorted = [...matches].sort((a, b) => roundOrder(matchRoundKey(a)) - roundOrder(matchRoundKey(b)) || (a.bracket_order || 0) - (b.bracket_order || 0));
+  const final = sorted.find((m) => matchRoundKey(m) === 'F');
+  const left = sorted.filter((m, i) => i % 2 === 0 && (!final || m.match_id !== final.match_id));
+  const right = sorted.filter((m, i) => i % 2 === 1 && (!final || m.match_id !== final.match_id));
+  return E('div', { className: 'face-grid' },
+    E('div', { className: 'face-side' }, left.map((m) => E(MatchCard, { key: m.match_id, match: m, playerMap, allMatches: matches }))),
+    E('div', { className: 'face-center' }, final ? E(MatchCard, { match: final, playerMap, allMatches: matches }) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })),
+    E('div', { className: 'face-side' }, right.map((m) => E(MatchCard, { key: m.match_id, match: m, playerMap, allMatches: matches })))
+  );
+}
+
+export function BracketModule({ championship, players, matches, setMatches, seeds, audit }) {
+  const [view, setView] = useState('tabular');
+  const [pageSize, setPageSize] = useState(championship.global_settings?.pdf_default_page_size || 'A3');
+  const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
+  const [scale, setScale] = useState('100');
+  const [rollbackReason, setRollbackReason] = useState('Corrección de fase autorizada');
+  const printAreaRef = useRef(null);
+  const playerMap = Object.fromEntries(players.map((p) => [p.player_id, p]));
+  const preMatches = matches.filter((m) => m.phase === 'PRE_ELIMINATION').sort((a, b) => (a.bracket_order || 0) - (b.bracket_order || 0));
+  const koMatches = matches.filter((m) => m.phase === 'KO').sort((a, b) => roundOrder(a.ko_round) - roundOrder(b.ko_round) || (a.bracket_order || 0) - (b.bracket_order || 0));
+  const allElimination = useMemo(() => [...preMatches, ...koMatches], [preMatches, koMatches]);
+
+  const replaceEliminationMatches = (newMatches) => setMatches([...matches.filter((m) => !['PRE_ELIMINATION', 'KO'].includes(m.phase)), ...newMatches]);
+  const generateInitial = () => {
+    if (!seeds.length) return alert('Primero clasifique grupos.');
+    const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
+    const structure = generateBracketStructure(championship, seeds, start);
+    if (structure.type === 'ERROR') return alert(structure.message);
+    replaceEliminationMatches([...structure.preMatches, ...structure.koMatches]);
+    audit('BRACKET_STRUCTURE', structure.message);
+  };
+  const fillCurrent = () => {
+    const target = preMatches.some((m) => !['COMPLETED', 'PLANNED'].includes(m.match_status))
+      ? preMatches.filter((m) => !['COMPLETED', 'PLANNED'].includes(m.match_status))
+      : koMatches.filter((m) => m.ko_round === latestActiveKoRound(matches) && !['COMPLETED', 'PLANNED'].includes(m.match_status));
+    if (!target.length) return alert('No hay partidas pendientes en la ronda activa.');
+    const completed = autoFillMatches(target, `bracket-${Date.now()}`);
+    setMatches(mergeById(matches, completed));
+    audit('BRACKET_RANDOM_RESULTS', `Resultados aplicados a ${completed.length} partidas.`);
+  };
+  const generateMainAfterPre = () => {
+    if (!preMatches.length) return alert('No existe preclasificación pendiente para este bracket.');
+    const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
+    const activePre = preMatches.filter((m) => m.match_status !== 'PLANNED');
+    const result = generateMainBracketAfterPre(championship, seeds, activePre.length ? activePre : preMatches, start);
+    if (result.error) return alert(result.error);
+    const merged = mergeWithProjectedSchedule(result.matches, matches);
+    setMatches([...matches.filter((m) => !(m.phase === 'KO' && m.ko_round === merged[0]?.ko_round && m.match_status === 'PLANNED')), ...merged]);
+    audit('MAIN_BRACKET_AFTER_PRE', `Bracket principal generado: ${merged.length} partidas, conservando fechas/horas/mesas proyectadas.`);
+  };
+  const generateNext = () => {
+    const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
+    const activePre = preMatches.filter((m) => m.match_status !== 'PLANNED');
+    const activeKo = koMatches.filter((m) => m.match_status !== 'PLANNED');
+
+    // Si el campeonato tuvo R0/preclasificación, este mismo botón activa el bracket principal
+    // luego de completar R0. Solo cambia jugadores; conserva fecha, hora y mesa proyectadas.
+    if (activePre.length && !activeKo.length) {
+      if (activePre.some((m) => m.match_status !== 'COMPLETED' || !m.winner_id)) {
+        return alert('Debe completar todas las partidas de preclasificación/R0 antes de generar la siguiente ronda.');
+      }
+      const main = generateMainBracketAfterPre(championship, seeds, activePre, start);
+      if (main.error) return alert(main.error);
+      const merged = mergeWithProjectedSchedule(main.matches, matches);
+      setMatches([...matches.filter((m) => !(m.phase === 'KO' && m.ko_round === merged[0]?.ko_round && m.match_status === 'PLANNED')), ...merged]);
+      audit('NEXT_KO_ROUND', `${roundDisplayName(merged[0]?.ko_round)} generada con jugadores reales, conservando fecha, hora y mesa proyectadas.`);
+      return;
+    }
+
+    const hasActiveElimination = matches.some((m) => ['PRE_ELIMINATION', 'KO'].includes(m.phase) && m.match_status !== 'PLANNED');
+    const result = hasActiveElimination
+      ? generateNextRound(championship, matches, start)
+      : generateInitialRoundFromSeeds(championship, seeds, matches, start);
+    if (result.error) return alert(result.error);
+    const first = result.matches[0];
+    const cleaned = first
+      ? matches.filter((m) => !(m.phase === first.phase && (m.ko_round || '') === (first.ko_round || '') && m.match_status === 'PLANNED'))
+      : matches;
+    setMatches([...cleaned, ...result.matches]);
+    audit('NEXT_KO_ROUND', `${first?.phase === 'PRE_ELIMINATION' ? 'Preclasificación' : roundDisplayName(first?.ko_round)} generada con jugadores reales, conservando fecha, hora y mesa proyectadas.`);
+  };
+  const rollbackPreviousPhase = () => {
+    if (['CLOSED', 'FINALIZED', 'COMPLETED'].includes(championship.status)) {
+      return alert('No se puede regresar fase si el campeonato está cerrado/finalizado.');
+    }
+    const activeRounds = [...new Set(allElimination.map((m) => matchRoundKey(m)))].sort((a, b) => roundOrder(a) - roundOrder(b));
+    if (!activeRounds.length) return alert('No hay fase eliminatoria generada. La última fase a la que puede regresarse es Grupos.');
+    const currentRound = activeRounds[activeRounds.length - 1];
+    const previousRound = activeRounds.length > 1 ? activeRounds[activeRounds.length - 2] : 'GROUPS';
+    if (!rollbackReason.trim()) return alert('Debe indicar motivo para regresar a la fase anterior.');
+    const message = previousRound === 'GROUPS'
+      ? `Esta acción eliminará ${roundDisplayName(currentRound)} y regresará a Grupos, conservando los resultados de grupos.`
+      : `Esta acción eliminará ${roundDisplayName(currentRound)} y regresará a ${roundDisplayName(previousRound)}.`;
+    if (!window.confirm(`${message}\n\nMotivo: ${rollbackReason}\n\n¿Desea continuar?`)) return;
+    const keep = matches.filter((m) => {
+      const key = matchRoundKey(m);
+      if (m.phase === 'PRE_ELIMINATION' || m.phase === 'KO') return key !== currentRound;
+      return true;
+    });
+    setMatches(keep);
+    audit('ROLLBACK_PHASE', `Regreso ordenado de ${roundDisplayName(currentRound)} a ${previousRound === 'GROUPS' ? 'Grupos' : roundDisplayName(previousRound)}. Motivo: ${rollbackReason}`);
+  };
+
+  const exportCurrentViewPdf = () => {
+    if (!allElimination.length) return alert('No hay información de bracket para exportar.');
+    const viewLabel = view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face';
+    const continuousPreset = view === 'continuous' ? continuousPdfPreset(allElimination, pageSize, orientation) : null;
+    const printPageSize = continuousPreset?.pageSize || pageSize;
+    const printOrientation = continuousPreset?.orientation || orientation;
+    const printScale = continuousPreset?.scale || scale;
+    const continuousClass = continuousPreset ? ` printing-bracket-continuous bracket-continuous-${continuousPreset.key} ${continuousPreset.extraClass || ''}` : '';
+    startPdfPrint({
+      bodyClass: `printing-bracket${continuousClass}`,
+      title: `Llaves - ${championship.name || 'Campeonato'} - ${viewLabel}${continuousPreset ? ' - ' + continuousPreset.label : ''}`,
+      pageSize: printPageSize,
+      orientation: printOrientation,
+      scale: printScale,
+      afterPrint: () => audit('BRACKET_PDF', `PDF generado desde vista ${viewLabel}${continuousPreset ? ' · ' + continuousPreset.label : ''}.`)
+    });
+  };
+
+  return E('div', { className: 'grid bracket-export-root' },
+    E('section', { className: 'bracket-hero-card' },
+      E('div', { className: 'toolbar', style: { justifyContent: 'space-between' } },
+        E(SectionTitle, { title: 'Llaves / Bracket', subtitle: 'Visualizaciones oficiales con foto, bandera, marcador, entradas y promedio por partida.' }),
+        E('div', { className: 'toolbar' },
+          E(Button, { onClick: generateInitial }, 'Generar estructura'),
+          E(Button, { onClick: fillCurrent, kind: 'success' }, 'Resultados ronda activa'),
+          E(Button, { onClick: generateMainAfterPre, kind: 'warning' }, 'Bracket después R0'),
+          E(Button, { onClick: generateNext, kind: 'success' }, 'Generar siguiente ronda'),
+          E(Button, { onClick: exportCurrentViewPdf, kind: 'soft' }, 'Generar PDF'),
+          E(Button, { onClick: rollbackPreviousPhase, kind: 'danger' }, 'Regresar fase')
+        ),
+        E(PdfControls, { pageSize, setPageSize, orientation, setOrientation, scale, setScale })
+      ),
+      E('div', { className: 'bracket-control-bar' },
+        E(Field, { label: 'Motivo regreso fase' }, E(Input, { value: rollbackReason, onChange: (e) => setRollbackReason(e.target.value), placeholder: 'Motivo obligatorio' })),
+        E('div', { className: 'control-chip' }, E('span', null, 'Tamaño bracket'), E('b', null, String(Math.max(4, allElimination.length ? allElimination.filter((m) => m.phase === 'KO' && m.ko_round === latestActiveKoRound(matches)).length * 2 || seeds.length : seeds.length || 0)))),
+        E('div', { className: 'view-toggle' },
+          E('button', { className: view === 'tabular' ? 'active' : '', onClick: () => setView('tabular') }, 'Tabular'),
+          E('button', { className: view === 'continuous' ? 'active' : '', onClick: () => setView('continuous') }, 'Continua'),
+          E('button', { className: view === 'face' ? 'active' : '', onClick: () => setView('face') }, 'Face to Face')
+        ),
+        E('div', { className: 'control-chip' }, E('span', null, 'Clasificados'), E('b', null, seeds.length)),
+        E('div', { className: 'control-chip' }, E('span', null, 'Partidas KO'), E('b', null, koMatches.length))
+      )
+    ),
+    E('section', { className: 'bracket-print-scope', ref: printAreaRef },
+      E(PdfDocument, { title: 'Llaves / Bracket', subtitle: `Vista ${view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face'}`, championship, meta: [`Clasificados: ${seeds.length}`, `Partidas: ${allElimination.length}`] },
+      !allElimination.length ? E(EmptyState, { title: 'Sin bracket', message: 'Clasifique grupos y genere la estructura de eliminación directa.' }) : null,
+      allElimination.length && view === 'tabular' ? E(TabularView, { matches: allElimination, playerMap }) : null,
+      allElimination.length && view === 'continuous' ? E(ContinuousView, { matches: allElimination, playerMap }) : null,
+      allElimination.length && view === 'face' ? E(Card, null, E(FaceToFaceView, { matches: allElimination, playerMap })) : null
+      )
+    )
+  );
+}
