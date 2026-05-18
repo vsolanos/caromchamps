@@ -170,6 +170,15 @@ export const DEFAULT_CHAMPIONSHIP = {
   division_filter: 'PRIMERA',
   participant_ids: DEFAULT_PLAYERS.map((p) => p.player_id),
   participant_seeds: Object.fromEntries(DEFAULT_PLAYERS.slice(0, 16).map((p, i) => [p.player_id, i + 1])),
+  championship_type: 'NORMAL',
+  ranking_championship_id: '',
+  ranking_max_championships: 5,
+  ranking_points_rules: [
+    { rule_id: 'RP-1', from_position: 1, to_position: 1, points: 15 },
+    { rule_id: 'RP-2', from_position: 2, to_position: 2, points: 10 },
+    { rule_id: 'RP-3-4', from_position: 3, to_position: 4, points: 7 },
+    { rule_id: 'RP-5-8', from_position: 5, to_position: 8, points: 3 }
+  ],
   play_mode: 'RACE',
   preferred_group_size: 4,
   qualifiers_per_group: 2,
@@ -194,7 +203,7 @@ export const DEFAULT_CHAMPIONSHIP = {
   closed_by: '',
   finalized_at: '',
   finalized_by: '',
-  global_settings: { avg_threshold_1ra: 0.800, avg_threshold_2da: 0.450, ui_theme: 'dark', pdf_default_page_size: 'A4', pdf_default_orientation: 'portrait' },
+  global_settings: { avg_threshold_1ra: 0.800, avg_threshold_2da: 0.450, ui_theme: 'light', language: 'es', pdf_default_page_size: 'A4', pdf_default_orientation: 'portrait' },
   division_movements_confirmed: false,
   confirmation_note: '',
   phase_rules: [

@@ -20,7 +20,8 @@ export function ConfigurationModule({ championship, setChampionship }) {
     timezone: setting(championship, 'timezone', 'America/Costa_Rica'),
     pdf_default_page_size: setting(championship, 'pdf_default_page_size', 'A4'),
     pdf_default_orientation: setting(championship, 'pdf_default_orientation', 'portrait'),
-    ui_theme: setting(championship, 'ui_theme', 'dark')
+    ui_theme: setting(championship, 'ui_theme', 'light'),
+    language: setting(championship, 'language', 'es')
   };
   const [avgDrafts, setAvgDrafts] = useState({
     avg_threshold_1ra: fmtAvg(settings.avg_threshold_1ra),
@@ -56,7 +57,8 @@ export function ConfigurationModule({ championship, setChampionship }) {
       timezone: 'America/Costa_Rica',
       pdf_default_page_size: 'A4',
       pdf_default_orientation: 'portrait',
-      ui_theme: 'dark'
+      ui_theme: 'light',
+      language: 'es'
     }
   });
 
@@ -82,10 +84,17 @@ export function ConfigurationModule({ championship, setChampionship }) {
         E(Field, { label: 'Orientación PDF por defecto', hint: 'Se aplica automáticamente en todos los controles de impresión.' },
           E(Select, { value: settings.pdf_default_orientation, onChange: (e) => patchSetting('pdf_default_orientation', e.target.value) }, PDF_ORIENTATION_OPTIONS.map(([value, label]) => E('option', { key: value, value }, label)))
         ),
-        E(Field, { label: 'Tema visual de la aplicación', hint: 'Oscuro conserva el look actual; claro usa una paleta limpia y sobria.' },
+        E(Field, { label: 'Tema visual de la aplicación', hint: 'Claro será el modo inicial por defecto.' },
           E(Select, { value: settings.ui_theme, onChange: (e) => patchSetting('ui_theme', e.target.value) },
-            E('option', { value: 'dark' }, 'Modo oscuro'),
-            E('option', { value: 'light' }, 'Modo claro')
+            E('option', { value: 'light' }, 'Modo claro'),
+            E('option', { value: 'dark' }, 'Modo oscuro')
+          )
+        ),
+        E(Field, { label: 'Idioma de fechas y plataforma', hint: 'Afecta fechas en pantalla y reportes.' },
+          E(Select, { value: settings.language, onChange: (e) => patchSetting('language', e.target.value) },
+            E('option', { value: 'es' }, 'Español'),
+            E('option', { value: 'en' }, 'English'),
+            E('option', { value: 'ko' }, '한국어')
           )
         )
       ),

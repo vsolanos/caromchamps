@@ -1,3 +1,19 @@
+
+## v5.1.0 - Ajustes de usabilidad, ranking y producción
+
+- Rediseño completo de pantalla de ingreso basado en layout premium de CaromChamps.
+- Tema inicial cambiado a modo claro.
+- Agregado menú colapsable: expandido muestra texto e íconos; contraído muestra solo íconos.
+- Agregados accesos de Perfil y Cerrar sesión desde el menú.
+- Nuevo módulo de perfil para actualizar nombre, país, teléfono y foto.
+- En modo oscuro, clasificados de grupos usan fondo azul claro y texto azul.
+- Eliminada validación de cantidad par de clasificados a F2; R0 queda como mecanismo de reducción.
+- División objetivo movida al Paso 1 de configuración del campeonato.
+- Agregada preferencia de idioma para fechas: español, inglés y coreano.
+- Agregada reapertura controlada de grupos cuando no existen fases posteriores activas.
+- Ajustado PDF continuo vertical Legal con Dieciseisavos para mayor uso de la hoja.
+- Agregados campeonatos tipo Ranking, asociación desde campeonatos Normal y tabla acumulada de puntos.
+
 # Changelog
 
 ## v5.0.0

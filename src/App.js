@@ -4,6 +4,7 @@ import { E, Card, Button, Badge, Stat } from './components/ui.js';
 import { PlayerHistoryModal } from './components/PlayerHistory.js';
 import { AuthGate } from './components/AuthGate.js';
 import { SharedChampionshipView } from './components/SharedView.js';
+import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
 import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
 import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg } from './lib/tournament.js';
@@ -20,6 +21,7 @@ import { ConfigurationModule } from './modules/Configuration.js';
 import { OfficialsModule } from './modules/Officials.js';
 import { CloseTournamentModule } from './modules/CloseTournament.js';
 import { AuditModule } from './modules/Audit.js';
+import { RankingModule } from './modules/Ranking.js';
 
 function loadState(storageKey = STORAGE_KEY, fallbackKey = '') {
   try {
@@ -39,13 +41,14 @@ function sharedTokenFromLocation() {
   return match?.[1] || '';
 }
 
-function Header({ championship, tab, setTab }) {
+function Header({ championship, tab, setTab, collapsed, setCollapsed, auth }) {
   const tabs = [
     ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
-    ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'],
-    ['config', 'Configuración', '⚙'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['audit', 'Auditoría', '◎']
+    ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
+    ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['audit', 'Auditoría', '◎']
   ];
-  return E('header', { className: 'header' },
+  const navigate = (id) => setTab(id);
+  return E('header', { className: `header ${collapsed ? 'collapsed' : ''}` },
     E('div', { className: 'brand-block' },
       E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
       E('div', { className: 'brand-copy' },
@@ -54,11 +57,18 @@ function Header({ championship, tab, setTab }) {
         E('div', { className: 'brand-secondary' }, E('img', { src: '/assets/fecobi-logo.jpg', alt: 'FECOBI' }), E('span', null, 'FECOBI / ASOBIGRIE'))
       )
     ),
-    E('nav', { className: 'tabs' }, tabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => setTab(id), className: `tab ${tab === id ? 'active' : ''}` }, E('span', { className: 'tab-icon' }, icon), E('span', null, label))))
+    E('div', { className: 'menu-toolbar' },
+      E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer')
+    ),
+    E('nav', { className: 'tabs' }, tabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))),
+    E('div', { className: 'side-profile-actions' },
+      E(Button, { onClick: () => navigate('profile'), kind: tab === 'profile' ? 'primary' : 'soft', title: 'Ajustes de perfil' }, collapsed ? '☻' : 'Perfil'),
+      E(Button, { onClick: auth?.signOut, kind: 'danger', title: 'Cerrar sesión' }, collapsed ? '⏻' : 'Cerrar sesión')
+    )
   );
 }
 
-function TopBar({ championship, auth }) {
+function TopBar({ championship, auth, setTab }) {
   return E('div', { className: 'topbar' },
     E('div', null,
       E('h1', { className: 'header-title' }, championship.name),
@@ -73,7 +83,7 @@ function TopBar({ championship, auth }) {
       E('span', { className: 'notification-pill' }, '3'),
       E('div', { className: 'avatar placeholder' }, (auth?.profile?.full_name || auth?.user?.email || 'CC').slice(0, 2).toUpperCase()),
       E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${auth?.profile?.role || 'ORGANIZER'} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
-      E(Button, { onClick: auth?.signOut, kind: 'soft' }, 'Salir')
+      E(Button, { onClick: () => setTab('profile'), kind: 'soft' }, 'Perfil'), E(Button, { onClick: auth?.signOut, kind: 'soft' }, 'Salir')
     )
   );
 }
@@ -360,12 +370,13 @@ ${link}`);
   };
 
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
-  const uiTheme = championship.global_settings?.ui_theme === 'light' ? 'light' : 'dark';
+  const uiTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
+  if (typeof window !== 'undefined') window.__CAROMCHAMPS_LANGUAGE__ = championship.global_settings?.language || 'es';
 
-  return E('div', { className: `app-shell theme-${uiTheme}` },
-    E(Header, { championship, tab, setTab }),
+  return E('div', { className: `app-shell theme-${uiTheme} ${menuCollapsed ? 'menu-collapsed' : ''}` },
+    E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth }),
     E('main', { className: 'main' },
-      E(TopBar, { championship, auth }),
+      E(TopBar, { championship, auth, setTab }),
       E(Card, null,
         E('div', { className: 'toolbar' },
           E(Button, { onClick: runFullDemo, kind: 'success' }, 'Demo completa'),
@@ -378,17 +389,19 @@ ${link}`);
       tab === 'dashboard' && E(Dashboard, { championship, players, groups, matches, seeds, championships }),
       tab === 'championships' && E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship }),
       tab === 'players' && E(PlayersModule, shared),
-      tab === 'setup' && E(SetupModule, { championship, setChampionship, players }),
+      tab === 'setup' && E(SetupModule, { championship, setChampionship, players, championships, activeId }),
       tab === 'groups' && E(GroupsModule, shared),
       tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
       tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit }),
       tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, audit }),
       tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
+      tab === 'ranking' && E(RankingModule, { championship, championships }),
       tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
       tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
       tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),
       tab === 'close' && E(CloseTournamentModule, { championship, setChampionship, players, setPlayers, matches, setMatches, seeds, audit }),
-      tab === 'audit' && E(AuditModule, { items })
+      tab === 'audit' && E(AuditModule, { items }),
+      tab === 'profile' && E(ProfileSettings, { auth, onProfileUpdated: auth?.updateProfile })
     ),
     historyPlayerId ? E(PlayerHistoryModal, {
       player: players.find((p) => p.player_id === historyPlayerId),

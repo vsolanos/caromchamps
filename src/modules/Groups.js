@@ -176,14 +176,17 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
   const [swapSelection, setSwapSelection] = useState([]);
   const [substitutePlayerId, setSubstitutePlayerId] = useState('');
 
+  const hasLaterPhase = useMemo(() => matches.some((m) => ['PRE_ELIMINATION', 'KO'].includes(m.phase)), [matches]);
+  const canReopenGroups = groups.length > 0 && seeds.length > 0 && championship.status === 'GROUPS_CLOSED' && !hasLaterPhase && !['CLOSED', 'FINALIZED', 'COMPLETED'].includes(championship.status);
+
   const groupMutationBlockedReason = useMemo(() => {
     if (!groups.length) return '';
     if (['GROUPS_CLOSED', 'COMPLETED', 'FINALIZED', 'CLOSED'].includes(championship.status)) return 'Los grupos ya están cerrados o el campeonato está finalizado. No se permite intercambiar ni sustituir jugadores.';
     if (seeds.length) return 'Ya existen clasificados generados. Para modificar grupos debe regresar a la fase de grupos antes de continuar.';
-    if (matches.some((m) => ['PRE_ELIMINATION', 'KO'].includes(m.phase))) return 'Ya se generó una fase posterior. No se permite modificar grupos.';
+    if (hasLaterPhase) return 'Ya se generó una fase posterior. No se permite modificar grupos.';
     if (matches.some((m) => m.phase === 'GROUPS' && ['COMPLETED', 'LOCKED'].includes(m.match_status))) return 'Existen partidas de grupos finalizadas. No se permite intercambiar ni sustituir jugadores.';
     return '';
-  }, [groups.length, championship.status, seeds.length, matches]);
+  }, [groups.length, championship.status, seeds.length, matches, hasLaterPhase]);
 
   const clearMutationState = () => {
     setSwapSelection([]);
@@ -202,6 +205,7 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
   };
 
   const buildTournament = (withRandomResults) => {
+    if (championship.championship_type === 'RANKING') return alert('Los campeonatos tipo Ranking no generan grupos. Se alimentan de campeonatos normales asociados.');
     const cfg = { ...championship, total_qualifiers_f2: totalQualifiers };
     const errors = validateChampionship(cfg, enrolled);
     if (errors.length) return alert(errors.join('\n'));
@@ -223,6 +227,14 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
     setSeeds(qualified);
     setChampionship({ ...championship, status: 'GROUPS_CLOSED' });
     audit('QUALIFIED_GENERATED', `${qualified.length} clasificados.`);
+  };
+
+  const reopenGroups = () => {
+    if (!canReopenGroups) return alert('Solo se pueden reabrir grupos cerrados/clasificados cuando no existen fases posteriores activas y el campeonato no está cerrado.');
+    if (!window.confirm('Esta acción eliminará la clasificación generada y reabrirá la fase de grupos, conservando partidas y resultados de grupos. ¿Desea continuar?')) return;
+    setSeeds([]);
+    setChampionship({ ...championship, status: 'IN_PROGRESS_GROUPS' });
+    audit('GROUPS_REOPENED', 'Grupos reabiertos. Clasificación eliminada; resultados de grupos conservados.');
   };
 
   const exportGroupsPdf = () => {
@@ -378,6 +390,7 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
         E(Button, { onClick: () => buildTournament(true), kind: 'success', disabled: validationErrors.length > 0 }, 'Generar grupos + resultados'),
         E(Button, { onClick: () => { if (!matches.length) return alert('Primero genere partidas.'); setMatches(autoFillMatches(matches, `${championship.random_seed}-existing`)); audit('RANDOM_RESULTS', 'Resultados aleatorios agregados.'); }, kind: 'success' }, 'Agregar resultados'),
         E(Button, { onClick: classify, kind: 'success' }, 'Clasificar'),
+        E(Button, { onClick: reopenGroups, kind: canReopenGroups ? 'warning' : 'soft', disabled: !canReopenGroups }, 'Reabrir grupos'),
         E(Button, { onClick: exportGroupsPdf, kind: 'soft' }, 'Generar PDF')
       ),
       E(PdfControls, { pageSize, setPageSize, orientation, setOrientation, scale, setScale })

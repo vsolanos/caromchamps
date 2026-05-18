@@ -7,6 +7,7 @@ const DIVISIONS = ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL'
 const GROUP_MODES = ['FULL_RANDOM', 'SEEDED_RANDOM', 'SEEDED_RANDOM_COUNTRY_SPREAD', 'SNAKE_DRAFT'];
 const CLOSURE_TYPES = ['CON_CIERRE', 'SIN_CIERRE'];
 const THIRD_PLACE = ['POINTS_THEN_AVG', 'AVG_THEN_POINTS'];
+const CHAMPIONSHIP_TYPES = ['NORMAL', 'RANKING'];
 
 function StatBlock({ label, value }) {
   return E('div', { className: 'round-card' }, E('div', { className: 'stat-label' }, label), E('div', { className: 'stat-value' }, value));
@@ -16,7 +17,7 @@ function playerMeta(player, isInternational) {
   return isInternational ? `${player.country_iso || '-'} · ${player.division_level}` : `${player.association_code || '-'} · ${player.division_level}`;
 }
 
-export function SetupModule({ championship, setChampionship, players }) {
+export function SetupModule({ championship, setChampionship, players, championships = [], activeId = '' }) {
   const [participantFilter, setParticipantFilter] = useState({ text: '', country: 'ALL', division: 'ALL', association: 'ALL', status: 'ACTIVO', seed: 'ALL', selected: 'ALL' });
   const participantIds = Array.isArray(championship.participant_ids) ? championship.participant_ids : players.filter((p) => p.status === 'ACTIVO').map((p) => p.player_id);
   const participantSeeds = championship.participant_seeds || {};
@@ -39,10 +40,37 @@ export function SetupModule({ championship, setChampionship, players }) {
   const enrolled = getEligiblePlayers({ ...championship, participant_ids: participantIds }, players);
   const groupCount = Math.max(1, Math.ceil(enrolled.length / num(championship.preferred_group_size, 4)));
   const total = calculateTotalQualifiers(championship, groupCount);
-  const errors = validateChampionship({ ...championship, total_qualifiers_f2: total, participant_ids: participantIds }, enrolled);
+  const errors = championship.championship_type === 'RANKING'
+    ? []
+    : validateChampionship({ ...championship, total_qualifiers_f2: total, participant_ids: participantIds }, enrolled);
+  const rankingRules = Array.isArray(championship.ranking_points_rules) ? championship.ranking_points_rules : [];
+  const rankingChampionshipOptions = championships
+    .filter((row) => row.id !== activeId)
+    .filter((row) => row.championship?.championship_type === 'RANKING')
+    .filter((row) => !['CLOSED', 'FINALIZED', 'COMPLETED'].includes(row.championship?.status))
+    .filter((row) => {
+      const parent = row.championship;
+      if (!championship.start_date || !championship.end_date || !parent.start_date || !parent.end_date) return true;
+      return String(championship.start_date) >= String(parent.start_date) && String(championship.end_date) <= String(parent.end_date);
+    });
+  const addRankingRule = () => setChampionship({
+    ...championship,
+    ranking_points_rules: [...rankingRules, { rule_id: `RP-${Date.now()}`, from_position: 1, to_position: 1, points: 0 }]
+  });
+  const patchRankingRule = (ruleId, key, value) => setChampionship({
+    ...championship,
+    ranking_points_rules: rankingRules.map((rule) => rule.rule_id === ruleId ? { ...rule, [key]: num(value, 0) } : rule)
+  });
+  const removeRankingRule = (ruleId) => setChampionship({
+    ...championship,
+    ranking_points_rules: rankingRules.filter((rule) => rule.rule_id !== ruleId)
+  });
 
   const patch = (key, value) => {
     let next = { ...championship, [key]: value, total_qualifiers_f2: total };
+    if (key === 'championship_type') {
+      next = { ...next, championship_type: value, ranking_championship_id: value === 'NORMAL' ? next.ranking_championship_id || '' : '', status: next.status || 'DRAFT' };
+    }
     if (key === 'division_filter') {
       const nextIsInternational = value === 'INTERNACIONAL';
       const nextIsSelective = value === 'SELECTIVO';
@@ -99,14 +127,30 @@ export function SetupModule({ championship, setChampionship, players }) {
         E(Field, { label: 'Representante 2' }, E(Input, { value: championship.representative2_name || '', onChange: (e) => patch('representative2_name', e.target.value), placeholder: 'Nombre del representante 2' })),
         E(Field, { label: 'Fecha inicio' }, E(Input, { type: 'date', value: championship.start_date || '', onChange: (e) => patch('start_date', e.target.value) })),
         E(Field, { label: 'Fecha fin' }, E(Input, { type: 'date', value: championship.end_date || '', onChange: (e) => patch('end_date', e.target.value) })),
+        E(Field, { label: 'División objetivo' }, E(Select, { value: championship.division_filter, onChange: (e) => patch('division_filter', e.target.value) }, DIVISIONS.map((x) => E('option', { key: x }, x)))),
+        E(Field, { label: 'Tipo de campeonato' }, E(Select, { value: championship.championship_type || 'NORMAL', onChange: (e) => patch('championship_type', e.target.value) }, CHAMPIONSHIP_TYPES.map((x) => E('option', { key: x, value: x }, x === 'RANKING' ? 'Ranking' : 'Normal')))),
+        (championship.championship_type || 'NORMAL') === 'RANKING' ? E(Field, { label: 'Cantidad de campeonatos para ranking' }, E(Input, { type: 'number', min: 1, value: championship.ranking_max_championships || 1, onChange: (e) => patch('ranking_max_championships', num(e.target.value, 1)) })) : null,
+        (championship.championship_type || 'NORMAL') === 'NORMAL' ? E(Field, { label: 'Campeonato Ranking', hint: 'Solo se muestran rankings activos dentro del rango de fechas.' }, E(Select, { value: championship.ranking_championship_id || '', onChange: (e) => patch('ranking_championship_id', e.target.value) }, E('option', { value: '' }, 'No asociado'), rankingChampionshipOptions.map((row) => E('option', { key: row.id, value: row.championship.championship_id }, row.name)))) : null,
         E(Field, { label: 'Website opcional' }, E(Input, { value: championship.website_url || '', onChange: (e) => patch('website_url', e.target.value), placeholder: 'https://...' })),
         E(Field, { label: 'Grupo WhatsApp opcional' }, E(Input, { value: championship.whatsapp_group || '', onChange: (e) => patch('whatsapp_group', e.target.value), placeholder: 'URL o nombre de grupo' }))
       )
     ),
+    (championship.championship_type || 'NORMAL') === 'RANKING' ? E(Card, null,
+      E(SectionTitle, { title: 'Campeonato Ranking · Puntuaciones', subtitle: 'Defina rangos de posiciones y puntos acumulables por campeonato normal asociado.' }),
+      E('div', { className: 'toolbar', style: { marginTop: 12 } }, E(Button, { onClick: addRankingRule, kind: 'success' }, 'Agregar rango de puntos')),
+      E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', { className: 'ranking-rules-table' },
+        E('thead', null, E('tr', null, ['Desde posición', 'Hasta posición', 'Puntos', 'Acciones'].map((h) => E('th', { key: h }, h)))),
+        E('tbody', null, rankingRules.map((rule) => E('tr', { key: rule.rule_id },
+          E('td', null, E(Input, { type: 'number', min: 1, value: rule.from_position, onChange: (e) => patchRankingRule(rule.rule_id, 'from_position', e.target.value) })),
+          E('td', null, E(Input, { type: 'number', min: 1, value: rule.to_position, onChange: (e) => patchRankingRule(rule.rule_id, 'to_position', e.target.value) })),
+          E('td', null, E(Input, { type: 'number', min: 0, value: rule.points, onChange: (e) => patchRankingRule(rule.rule_id, 'points', e.target.value) })),
+          E('td', null, E(Button, { onClick: () => removeRankingRule(rule.rule_id), kind: 'danger' }, 'Eliminar'))
+        )))
+      ))
+    ) : null,
     E(Card, null,
       E(SectionTitle, { title: 'Campeonato · Paso 3: Reglas y parámetros operativos', subtitle: 'Para campeonatos abiertos use INTERNACIONAL. Para selectivos use SELECTIVO: solo primera división y sin ascenso/descenso.' }),
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
-        E(Field, { label: 'División objetivo' }, E(Select, { value: championship.division_filter, onChange: (e) => patch('division_filter', e.target.value) }, DIVISIONS.map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Modalidad' }, E(Select, { value: championship.play_mode, onChange: (e) => patch('play_mode', e.target.value) }, ['RACE', 'SETS'].map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Tamaño grupo' }, E(Select, { value: championship.preferred_group_size, onChange: (e) => patch('preferred_group_size', num(e.target.value)) }, [3, 4, 5, 6].map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Modo generación grupos' }, E(Select, { value: championship.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, GROUP_MODES.map((x) => E('option', { key: x }, x)))),
@@ -150,7 +194,7 @@ export function SetupModule({ championship, setChampionship, players }) {
       )
     ),
     E(Card, { className: 'setup-player-selection-card' },
-      E(SectionTitle, { title: 'Campeonato · Paso 2: Selección de jugadores participantes', subtitle: isInternational ? 'Campeonato internacional: lista todos los jugadores activos de todos los países y divisiones.' : 'Campeonato por división: lista jugadores activos de la división objetivo.' }),
+      E(SectionTitle, { title: 'Campeonato · Paso 2: Selección de jugadores participantes', subtitle: (championship.championship_type === 'RANKING') ? 'Los campeonatos Ranking no generan grupos; se alimentan con campeonatos Normal asociados.' : (isInternational ? 'Campeonato internacional: lista todos los jugadores activos de todos los países y divisiones.' : 'Campeonato por división: lista jugadores activos de la división objetivo.') }),
       E('div', { className: 'toolbar', style: { marginTop: 12 } },
         E(Button, { onClick: selectAllVisible, kind: 'success' }, 'Seleccionar filtrados'),
         E(Button, { onClick: removeVisible, kind: 'warning' }, 'Quitar filtrados'),

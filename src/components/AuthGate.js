@@ -29,12 +29,14 @@ async function uploadAvatar(userId, file) {
 }
 
 function LandingHeader() {
-  return E('div', { className: 'auth-hero' },
-    E('div', { className: 'auth-logo-mark' }, 'CC'),
-    E('div', null,
-      E('h1', null, 'CaromChamps'),
-      E('p', null, 'Gestión profesional de campeonatos de billar carambola, con usuarios, campeonatos privados y vistas compartidas.')
-    )
+  return E('div', { className: 'auth-hero-copy' },
+    E('div', { className: 'auth-logo-mark premium' }, 'C'),
+    E('h1', null, 'CAROM', E('br'), 'CHAMPS'),
+    E('p', null, '3-Cushion Billiards Management Platform'),
+    E('div', { className: 'auth-feature-list' },
+      [['🏆', 'Torneos'], ['👥', 'Jugadores'], ['📅', 'Calendarios'], ['📊', 'Resultados'], ['🛡️', 'Rankings'], ['💬', 'Comunidad']].map(([icon, label]) => E('div', { className: 'auth-feature-item', key: label }, E('span', null, icon), E('b', null, label)))
+    ),
+    E('div', { className: 'auth-hero-tagline' }, 'Administre. Compita. ', E('b', null, 'Gane.'))
   );
 }
 
@@ -144,44 +146,57 @@ export function AuthGate({ render }) {
 
   if (session?.user) {
     const effectiveProfile = profile || { email: session.user.email, full_name: session.user.email, role: isAdminEmail(session.user.email) ? 'ADMIN' : 'ORGANIZER', status: 'ACTIVE' };
-    return render({ session, user: session.user, profile: effectiveProfile, signOut });
+    return render({ session, user: session.user, profile: effectiveProfile, signOut, updateProfile: setProfile });
   }
 
-  return E('div', { className: 'auth-page' },
-    E(Card, { className: 'auth-card' },
-      E(LandingHeader),
-      E('div', { className: 'auth-tabs' },
-        E(Button, { kind: mode === 'login' ? 'primary' : 'soft', onClick: () => setMode('login') }, 'Iniciar sesión'),
-        E(Button, { kind: mode === 'signup' ? 'primary' : 'soft', onClick: () => setMode('signup') }, 'Crear cuenta')
+  const formTitle = mode === 'signup' ? 'Crear cuenta' : 'Welcome Back';
+  const formSubtitle = mode === 'signup' ? 'Registre su perfil para usar CaromChamps' : 'Access the CaromChamps platform';
+
+  return E('div', { className: 'auth-page auth-page-premium' },
+    E('section', { className: 'auth-shell-premium' },
+      E('div', { className: 'auth-left-panel' },
+        E('img', { className: 'auth-left-image', src: '/assets/auth-hero-caromchamps.png', alt: 'CaromChamps billiards access' }),
+        E('div', { className: 'auth-left-overlay' }),
+        E(LandingHeader)
       ),
-      mode === 'signup' ? E('div', { className: 'grid', style: { marginTop: 12 } },
-        E(Field, { label: 'Nombre completo' }, E(Input, { value: form.full_name, onChange: (e) => patch('full_name', e.target.value), placeholder: 'Nombre y apellidos' })),
-        E(Field, { label: 'Correo / Usuario' }, E(Input, { type: 'email', value: form.email, onChange: (e) => patch('email', e.target.value), placeholder: 'correo@dominio.com' })),
-        E(Field, { label: 'Contraseña' }, E(Input, { type: 'password', value: form.password, onChange: (e) => patch('password', e.target.value), placeholder: 'Contraseña segura' })),
-        E('div', { className: 'grid grid-2' },
-          E(Field, { label: 'País' }, E(Select, { value: form.country_iso, onChange: (e) => patch('country_iso', e.target.value) }, COUNTRIES.map((country) => E('option', { key: country.iso, value: country.iso }, `${country.name} (${country.dial})`)))),
-          E(Field, { label: `Teléfono ${selectedCountry.dial}`, hint: selectedCountry.hint }, E(Input, { value: form.phone_local, onChange: (e) => patch('phone_local', normalizePhone(e.target.value)), placeholder: selectedCountry.hint }))
+      E('div', { className: 'auth-right-panel' },
+        E('div', { className: 'auth-security-icon' }, '🔒'),
+        E('h2', null, formTitle),
+        E('p', { className: 'auth-subtitle' }, formSubtitle),
+        E('div', { className: 'auth-tabs premium-tabs' },
+          E(Button, { kind: mode === 'login' ? 'primary' : 'soft', onClick: () => setMode('login') }, 'Iniciar sesión'),
+          E(Button, { kind: mode === 'signup' ? 'primary' : 'soft', onClick: () => setMode('signup') }, 'Crear cuenta')
         ),
-        E(Field, { label: 'Foto de perfil opcional', hint: 'JPG, PNG o WEBP. Máximo 5 MB.' }, E(Input, { type: 'file', accept: 'image/png,image/jpeg,image/webp', onChange: (e) => patch('avatar_file', e.target.files?.[0] || null) })),
-        form.phone_local && !phoneValidation.valid ? E('div', { className: 'auth-error' }, phoneValidation.message) : null,
-        E(Button, { onClick: signUp, disabled: busy, kind: 'success' }, busy ? 'Creando...' : 'Crear cuenta y confirmar correo')
-      ) : E('div', { className: 'grid', style: { marginTop: 12 } },
-        E(Field, { label: 'Correo / Usuario' }, E(Input, { type: 'email', value: form.email, onChange: (e) => patch('email', e.target.value), placeholder: 'correo@dominio.com' })),
-        E(Field, { label: 'Contraseña' }, E(Input, { type: 'password', value: form.password, onChange: (e) => patch('password', e.target.value), placeholder: 'Contraseña' })),
-        E('div', { className: 'toolbar' },
-          E(Button, { onClick: signIn, disabled: busy, kind: 'success' }, busy ? 'Ingresando...' : 'Ingresar'),
-          E(Button, { onClick: resetPassword, disabled: busy, kind: 'soft' }, 'Recuperar contraseña')
+        mode === 'signup' ? E('div', { className: 'grid auth-form-grid', style: { marginTop: 12 } },
+          E(Field, { label: 'Nombre completo' }, E(Input, { value: form.full_name, onChange: (e) => patch('full_name', e.target.value), placeholder: 'Nombre y apellidos' })),
+          E(Field, { label: 'Correo / Usuario' }, E(Input, { type: 'email', value: form.email, onChange: (e) => patch('email', e.target.value), placeholder: 'correo@dominio.com' })),
+          E(Field, { label: 'Contraseña' }, E(Input, { type: 'password', value: form.password, onChange: (e) => patch('password', e.target.value), placeholder: 'Contraseña segura' })),
+          E('div', { className: 'grid grid-2' },
+            E(Field, { label: 'País' }, E(Select, { value: form.country_iso, onChange: (e) => patch('country_iso', e.target.value) }, COUNTRIES.map((country) => E('option', { key: country.iso, value: country.iso }, `${country.name} (${country.dial})`)))),
+            E(Field, { label: `Teléfono ${selectedCountry.dial}`, hint: selectedCountry.hint }, E(Input, { value: form.phone_local, onChange: (e) => patch('phone_local', normalizePhone(e.target.value)), placeholder: selectedCountry.hint }))
+          ),
+          E(Field, { label: 'Foto de perfil opcional', hint: 'JPG, PNG o WEBP. Máximo 5 MB.' }, E(Input, { type: 'file', accept: 'image/png,image/jpeg,image/webp', onChange: (e) => patch('avatar_file', e.target.files?.[0] || null) })),
+          form.phone_local && !phoneValidation.valid ? E('div', { className: 'auth-error' }, phoneValidation.message) : null,
+          E(Button, { onClick: signUp, disabled: busy, kind: 'success' }, busy ? 'Creando...' : 'Crear cuenta y confirmar correo')
+        ) : E('div', { className: 'grid auth-form-grid', style: { marginTop: 12 } },
+          E(Field, { label: 'Email' }, E(Input, { type: 'email', value: form.email, onChange: (e) => patch('email', e.target.value), placeholder: 'you@example.com' })),
+          E(Field, { label: 'Password' }, E(Input, { type: 'password', value: form.password, onChange: (e) => patch('password', e.target.value), placeholder: 'Enter your password' })),
+          E('div', { className: 'auth-login-options' }, E('label', null, E('input', { type: 'checkbox', defaultChecked: true }), ' Recordarme'), E('button', { type: 'button', onClick: resetPassword }, '¿Olvidó su contraseña?')),
+          E(Button, { onClick: signIn, disabled: busy, kind: 'success' }, busy ? 'Ingresando...' : 'LOGIN →')
+        ),
+        E('div', { className: 'auth-separator' }, 'OR'),
+        E('div', { className: 'auth-socials-premium' },
+          E(Button, { onClick: () => socialLogin('google'), disabled: busy, kind: 'soft' }, '🌐 Continuar con Google'),
+          E(Button, { onClick: () => socialLogin('facebook'), disabled: busy, kind: 'soft' }, '🔵 Continuar con Facebook')
+        ),
+        mode === 'login'
+          ? E('p', { className: 'auth-switch-note' }, '¿No tiene cuenta? ', E('button', { type: 'button', onClick: () => setMode('signup') }, 'Crear cuenta'))
+          : E('p', { className: 'auth-switch-note' }, '¿Ya tiene cuenta? ', E('button', { type: 'button', onClick: () => setMode('login') }, 'Iniciar sesión')),
+        message ? E('div', { className: /correctamente|Revise|recibirá/i.test(message) ? 'auth-message' : 'auth-error' }, message) : null,
+        E('div', { className: 'auth-note' },
+          E(Badge, { kind: 'info' }, 'Usuarios activos'),
+          E('span', null, 'Para ver campeonatos compartidos por link debe iniciar sesión o crear una cuenta activa.')
         )
-      ),
-      E('div', { className: 'auth-separator' }, 'o ingrese con'),
-      E('div', { className: 'toolbar auth-socials' },
-        E(Button, { onClick: () => socialLogin('google'), disabled: busy, kind: 'soft' }, 'Google'),
-        E(Button, { onClick: () => socialLogin('facebook'), disabled: busy, kind: 'soft' }, 'Facebook')
-      ),
-      message ? E('div', { className: /correctamente|Revise|recibirá/i.test(message) ? 'auth-message' : 'auth-error' }, message) : null,
-      E('div', { className: 'auth-note' },
-        E(Badge, { kind: 'info' }, 'Usuarios activos'),
-        E('span', null, 'Para ver campeonatos compartidos por link debe iniciar sesión o crear una cuenta activa.')
       )
     )
   );

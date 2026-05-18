@@ -15,25 +15,33 @@ export function playerName(player) {
   return player ? `${player.first_name} ${player.last_name}`.trim() : 'N/D';
 }
 
+export function appLocale() {
+  const language = String(globalThis.__CAROMCHAMPS_LANGUAGE__ || 'es').toLowerCase();
+  if (language === 'en') return 'en-US';
+  if (language === 'ko') return 'ko-KR';
+  return 'es-CR';
+}
+
 export function formatDateEs(value, options = {}) {
   if (!value) return '-';
   const raw = String(value);
   const date = raw.includes('T') ? new Date(raw) : new Date(`${raw}T00:00:00`);
   if (Number.isNaN(date.getTime())) return raw;
   const defaultOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-  return new Intl.DateTimeFormat('es-CR', { ...defaultOptions, ...options }).format(date).replace('.', '');
+  return new Intl.DateTimeFormat(appLocale(), { ...defaultOptions, ...options }).format(date).replace('.', '');
 }
 
 export function formatDateTimeEs(value = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value || '-');
-  return new Intl.DateTimeFormat('es-CR', {
+  const locale = appLocale();
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: true
+    hour12: locale !== 'ko-KR'
   }).format(date).replace('.', '');
 }
 
@@ -125,7 +133,7 @@ export function validateChampionship(championship, players) {
   if (num(championship.qualifiers_per_group) < 1) errors.push('Debe clasificar al menos un jugador por grupo.');
   if (num(championship.qualifiers_per_group) > size) errors.push('Clasificados por grupo no puede superar el tamaño de grupo.');
   if (num(championship.extra_qualifiers_count) > 0 && num(championship.extra_qualifier_position) <= 0) errors.push('Debe indicar la posición adicional a comparar.');
-  if (totalQualifiers <= 0 || totalQualifiers % 2 !== 0) errors.push('El total de clasificados a F2 debe ser par y mayor a cero.');
+  if (totalQualifiers <= 0) errors.push('El total de clasificados a F2 debe ser mayor a cero. Si no coincide con número mágico, R0 reducirá el bracket.');
   if (totalQualifiers > players.length) errors.push('Clasificados supera jugadores seleccionados.');
   if (num(championship.target_points) <= 0) errors.push('Carambolas objetivo debe ser mayor a cero.');
   const activeTableCount = Array.isArray(championship.tables) ? championship.tables.filter((t) => t.is_active).length : 0;
@@ -523,8 +531,8 @@ function buildDirectRound(championship, orderedSeeds, round, startNumber = 1) {
 export function generateBracketStructure(championship, seeds, startNumber = 1) {
   const ordered = normalizeSeeds(seeds);
   const q = ordered.length;
-  if (q < 4 || q % 2 !== 0) {
-    return { type: 'ERROR', message: 'La cantidad de clasificados debe ser par y al menos 4.', q, base: null, exempt: 0, preMatches: [], koMatches: [] };
+  if (q < 4) {
+    return { type: 'ERROR', message: 'La cantidad de clasificados debe ser al menos 4. Si no coincide con número mágico, se generará R0.', q, base: null, exempt: 0, preMatches: [], koMatches: [] };
   }
   if (isMagicQualifierCount(q)) {
     const round = roundForSize(q);

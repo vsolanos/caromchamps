@@ -1,3 +1,21 @@
+# CaromChamps v5.1.0
+
+Actualización funcional y visual enfocada en producción web: pantalla de ingreso premium, modo claro por defecto, menú colapsable, perfil de usuario, fechas localizadas por idioma, reapertura controlada de grupos, mejora del PDF continuo R32/Dieciseisavos y primera versión de campeonatos tipo Ranking.
+
+## Cambios principales v5.1.0
+
+- Pantalla de login/registro rediseñada con diseño visual profesional y acceso social.
+- Modo claro como tema por defecto para nuevos usuarios/campeonatos.
+- Menú lateral colapsable con iconos y accesos a Perfil/Cerrar sesión.
+- Módulo de ajustes de perfil con foto, país y teléfono validado.
+- Clasificados en modo oscuro para tablas de grupos con fondo azul claro y texto azul.
+- Eliminada restricción de clasificados pares; R0 resuelve cantidades no mágicas.
+- División objetivo movida al Paso 1 del campeonato.
+- Fechas localizadas por idioma: español, inglés y coreano.
+- Botón Reabrir grupos bajo validaciones de seguridad.
+- PDF continuo de llave con Dieciseisavos/R32 ampliado para aprovechar mejor la hoja Legal.
+- Nueva funcionalidad Ranking: campeonatos tipo Ranking, reglas de puntuación configurables y tabla acumulada por jugadores.
+
 # CaromChamps — Plataforma de Campeonatos v5.0
 
 CaromChamps v5.0 introduce la primera capa de plataforma multiusuario con Supabase: autenticación por correo, Google y Facebook, perfiles de usuario, rol Admin, separación de datos por usuario, sincronización de estado en Supabase y enlaces compartidos de campeonatos para usuarios activos.
