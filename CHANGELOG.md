@@ -1,5 +1,19 @@
 # Changelog
 
+## v5.0.0
+
+- Nueva pantalla de inicio con autenticación Supabase.
+- Registro con nombre, correo, país, código telefónico, teléfono validado y foto opcional de perfil.
+- Login por correo/contraseña, Google y Facebook; Instagram queda reservado para fase posterior.
+- Usuario `vsolanos@gmail.com` definido como Admin mediante trigger/perfil Supabase.
+- Separación de datos por usuario y sincronización central en tabla `user_app_states`.
+- Los datos actuales pueden migrarse al usuario Admin desde el respaldo local del navegador.
+- Enlaces compartidos de campeonatos para cualquier usuario activo con link, en modo solo lectura.
+- Nueva vista compartida con grupos, llaves, partidas KO y ranking público.
+- Supabase Storage para fotos de perfil en bucket `user-avatars`, máximo 5 MB.
+- Se agregan `docs/supabase_schema_v5.sql`, `docs/SUPABASE_SETUP_v5.md` y `.env.example`.
+- `package.json` actualizado a versión `5.0.0` y dependencia `@supabase/supabase-js`.
+
 ## v4.14.0
 
 - Rebranding inicial a **CaromChamps** para el repositorio oficial `vsolanos/caromchamps`.

@@ -1,3 +1,58 @@
+# CaromChamps — Plataforma de Campeonatos v5.0
+
+CaromChamps v5.0 introduce la primera capa de plataforma multiusuario con Supabase: autenticación por correo, Google y Facebook, perfiles de usuario, rol Admin, separación de datos por usuario, sincronización de estado en Supabase y enlaces compartidos de campeonatos para usuarios activos.
+
+## Configuración Supabase requerida
+
+Antes de publicar v5.0, ejecutar en Supabase el script:
+
+```text
+docs/supabase_schema_v5.sql
+```
+
+Configurar en Cloudflare Pages las variables:
+
+```text
+VITE_SUPABASE_URL=https://vmcbaexkbenbesygxccu.supabase.co
+VITE_SUPABASE_ANON_KEY=<publishable/anon key de Supabase>
+```
+
+Configurar en Supabase Auth:
+
+```text
+Site URL: https://caromchamps.com
+Redirect URLs:
+https://caromchamps.com/*
+http://localhost:5173/*
+```
+
+El usuario `vsolanos@gmail.com` queda definido como Admin por el script de base de datos. La contraseña debe gestionarse únicamente desde Supabase Auth y nunca guardarse en el código.
+
+## Instalación y validación
+
+```powershell
+npm.cmd install --registry=https://registry.npmjs.org/
+npm.cmd run check:syntax
+npm.cmd run build
+npm.cmd run dev
+```
+
+## Cambios principales v5.0
+
+- Pantalla inicial de CaromChamps con login y registro.
+- Registro con nombre, correo, país, código telefónico, teléfono validado y foto opcional de perfil.
+- Autenticación con correo/contraseña, Google y Facebook.
+- Confirmación de correo administrada por Supabase Auth.
+- Perfil de usuario con foto hasta 5 MB.
+- Rol `ADMIN` para `vsolanos@gmail.com`; usuarios nuevos como `ORGANIZER`.
+- Datos separados por usuario y sincronización con Supabase en `user_app_states`.
+- Migración local inicial para Admin desde la data histórica guardada en navegador.
+- Enlaces compartidos de campeonato en modo solo lectura para usuarios activos.
+- Vista compartida con grupos, llaves, partidas KO y ranking público.
+- Documentación SQL y guía de configuración Supabase en `docs/`.
+
+---
+
 # CaromChamps — Control de Campeonatos v4.14
 
 Versión de transición al repositorio oficial `vsolanos/caromchamps`. Mantiene la instancia inicial FECOBI / ASOBIGRIE, pero establece **CaromChamps** como nombre comercial y nombre técnico del paquete.

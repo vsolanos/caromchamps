@@ -1,7 +1,7 @@
 import { E, Card, Button, Input, Field, SectionTitle, Badge, EmptyState } from '../components/ui.js';
 import { uid, makeChampionshipSnapshot, formatDateEs } from '../lib/tournament.js';
 
-export function ChampionshipsModule({ championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds }) {
+export function ChampionshipsModule({ championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship }) {
   const currentSnapshot = makeChampionshipSnapshot(championship, groups, matches, seeds);
   const rows = championships.length ? championships : [currentSnapshot];
   return E('div', { className: 'grid' },
@@ -26,6 +26,7 @@ export function ChampionshipsModule({ championships, activeId, loadChampionship,
           E('td', null, row.updated_at || '-'),
           E('td', null, E('div', { className: 'toolbar' },
             E(Button, { onClick: () => loadChampionship(row.id), kind: 'soft', disabled: row.id === activeId }, 'Abrir'),
+            E(Button, { onClick: () => shareChampionship?.(row.id), kind: 'success' }, 'Compartir link'),
             E(Button, { onClick: () => deleteChampionship(row.id), kind: 'danger', disabled: row.id === activeId }, 'Eliminar')
           ))
         )))

@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import appPackage from '../package.json';
 import { E, Card, Button, Badge, Stat } from './components/ui.js';
 import { PlayerHistoryModal } from './components/PlayerHistory.js';
+import { AuthGate } from './components/AuthGate.js';
+import { SharedChampionshipView } from './components/SharedView.js';
+import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
 import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
 import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
@@ -18,13 +21,22 @@ import { OfficialsModule } from './modules/Officials.js';
 import { CloseTournamentModule } from './modules/CloseTournament.js';
 import { AuditModule } from './modules/Audit.js';
 
-function loadState() {
+function loadState(storageKey = STORAGE_KEY, fallbackKey = '') {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey) || (fallbackKey ? localStorage.getItem(fallbackKey) : '');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
+}
+
+function userStorageKey(user) {
+  return `${STORAGE_KEY}::user::${user?.id || 'anonymous'}`;
+}
+
+function sharedTokenFromLocation() {
+  const match = window.location.pathname.match(/\/shared\/championship\/([^/]+)/i);
+  return match?.[1] || '';
 }
 
 function Header({ championship, tab, setTab }) {
@@ -46,7 +58,7 @@ function Header({ championship, tab, setTab }) {
   );
 }
 
-function TopBar({ championship }) {
+function TopBar({ championship, auth }) {
   return E('div', { className: 'topbar' },
     E('div', null,
       E('h1', { className: 'header-title' }, championship.name),
@@ -59,8 +71,9 @@ function TopBar({ championship }) {
     ),
     E('div', { className: 'topbar-user' },
       E('span', { className: 'notification-pill' }, '3'),
-      E('div', { className: 'avatar placeholder' }, 'VS'),
-      E('div', null, E('b', null, 'Administrador'), E('div', { className: 'small' }, 'CaromChamps'))
+      E('div', { className: 'avatar placeholder' }, (auth?.profile?.full_name || auth?.user?.email || 'CC').slice(0, 2).toUpperCase()),
+      E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${auth?.profile?.role || 'ORGANIZER'} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
+      E(Button, { onClick: auth?.signOut, kind: 'soft' }, 'Salir')
     )
   );
 }
@@ -170,9 +183,10 @@ function cloneChampionship(championship, suffix = 'COPIA') {
   return { ...championship, championship_id: nextId, name: `${championship.name} ${suffix}`, status: 'DRAFT', closed_at: '', closed_by: '', finalized_at: '', finalized_by: '', division_movements_confirmed: false, confirmation_note: '' };
 }
 
-export default function App() {
+function AppShell({ auth }) {
   window.ReactRuntime = React;
-  const saved = loadState();
+  const storageKey = userStorageKey(auth?.user);
+  const saved = loadState(storageKey, auth?.profile?.role === 'ADMIN' ? STORAGE_KEY : '');
   const initialChampionship = saved?.championship || DEFAULT_CHAMPIONSHIP;
   const [players, setPlayers] = useState(saved?.players ? mergeDefaultPlayers(saved.players, DEFAULT_PLAYERS) : DEFAULT_PLAYERS.map(normalizeLegacyPlayerData));
   const [championship, setChampionship] = useState(initialChampionship);
@@ -184,6 +198,9 @@ export default function App() {
   const [activeId, setActiveId] = useState(saved?.activeId || initialChampionship.championship_id);
   const [championships, setChampionships] = useState(saved?.championships || [makeChampionshipSnapshot(initialChampionship, saved?.groups || [], saved?.matches || [], saved?.seeds || [])]);
   const [historyPlayerId, setHistoryPlayerId] = useState('');
+  const [syncStatus, setSyncStatus] = useState('Sincronización local activa');
+  const [remoteReady, setRemoteReady] = useState(false);
+  const didLoadRemote = useRef(false);
 
 
   useEffect(() => {
@@ -201,6 +218,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!auth?.user?.id || didLoadRemote.current) return;
+    didLoadRemote.current = true;
+    loadUserAppState(auth.user.id).then(({ state, error }) => {
+      if (error) {
+        setSyncStatus(`Sincronización local activa. Supabase: ${error.message}`);
+        setRemoteReady(true);
+        return;
+      }
+      if (!state) {
+        setSyncStatus('Sincronizado localmente. Pendiente primera copia en Supabase.');
+        setRemoteReady(true);
+        return;
+      }
+      setPlayers(state.players ? mergeDefaultPlayers(state.players, DEFAULT_PLAYERS) : DEFAULT_PLAYERS.map(normalizeLegacyPlayerData));
+      setChampionship(state.championship || DEFAULT_CHAMPIONSHIP);
+      setGroups(state.groups || []);
+      setMatches(state.matches || []);
+      setSeeds(state.seeds || []);
+      setItems(state.items || []);
+      setChampionships(state.championships || [makeChampionshipSnapshot(state.championship || DEFAULT_CHAMPIONSHIP, state.groups || [], state.matches || [], state.seeds || [])]);
+      setActiveId(state.activeId || state.championship?.championship_id || DEFAULT_CHAMPIONSHIP.championship_id);
+      setSyncStatus('Datos cargados desde Supabase.');
+      setRemoteReady(true);
+    });
+  }, [auth?.user?.id]);
+
+  useEffect(() => {
     setChampionships((prev) => {
       const snapshot = makeChampionshipSnapshot(championship, groups, matches, seeds);
       const exists = prev.some((row) => row.id === championship.championship_id);
@@ -210,11 +254,22 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ players, championship, groups, matches, seeds, items, championships, activeId }));
+      localStorage.setItem(storageKey, JSON.stringify({ players, championship, groups, matches, seeds, items, championships, activeId }));
     } catch (error) {
       console.warn('No fue posible guardar el estado local. Revise tamaño de fotografías o almacenamiento del navegador.', error);
     }
-  }, [players, championship, groups, matches, seeds, items, championships, activeId]);
+  }, [players, championship, groups, matches, seeds, items, championships, activeId, storageKey]);
+
+  useEffect(() => {
+    if (!auth?.user?.id || !remoteReady) return;
+    const state = { players, championship, groups, matches, seeds, items, championships, activeId };
+    const timer = setTimeout(() => {
+      saveUserAppState(auth.user.id, state).then(({ error }) => {
+        setSyncStatus(error ? `No sincronizado con Supabase: ${error.message}` : `Sincronizado con Supabase · ${formatDateTimeEs(new Date())}`);
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [players, championship, groups, matches, seeds, items, championships, activeId, auth?.user?.id, remoteReady]);
 
   const audit = (type, detail) => setItems((prev) => [{ id: uid('A'), type, detail, timestamp: formatDateTimeEs(new Date()), championship_id: championship.championship_id }, ...prev]);
 
@@ -258,7 +313,7 @@ export default function App() {
   };
 
   const resetDemo = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey);
     setPlayers(DEFAULT_PLAYERS);
     setChampionship(DEFAULT_CHAMPIONSHIP);
     setGroups([]);
@@ -292,13 +347,25 @@ export default function App() {
     audit('CLEAR_RESULTS', 'Resultados borrados.');
   };
 
+  const shareChampionship = async (rowId = activeId) => {
+    const row = championships.find((item) => item.id === rowId) || makeChampionshipSnapshot(championship, groups, matches, seeds);
+    const snapshot = { ...row, players, championship: row.championship || championship, groups: row.groups || groups, matches: row.matches || matches, seeds: row.seeds || seeds };
+    const { data, error } = await createChampionshipShare({ userId: auth?.user?.id, championshipSnapshot: snapshot });
+    if (error) { alert(`No fue posible generar el enlace: ${error.message}`); return; }
+    const link = `${window.location.origin}/shared/championship/${data.token}`;
+    try { await navigator.clipboard.writeText(link); } catch {}
+    audit('SHARE_CREATED', `Enlace compartido generado para ${snapshot.name || championship.name}`);
+    alert(`Enlace copiado para compartir:
+${link}`);
+  };
+
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
   const uiTheme = championship.global_settings?.ui_theme === 'light' ? 'light' : 'dark';
 
   return E('div', { className: `app-shell theme-${uiTheme}` },
     E(Header, { championship, tab, setTab }),
     E('main', { className: 'main' },
-      E(TopBar, { championship }),
+      E(TopBar, { championship, auth }),
       E(Card, null,
         E('div', { className: 'toolbar' },
           E(Button, { onClick: runFullDemo, kind: 'success' }, 'Demo completa'),
@@ -307,8 +374,9 @@ export default function App() {
           E(Button, { onClick: resetDemo, kind: 'danger' }, 'Reiniciar demo')
         )
       ),
+      E('div', { className: 'sync-status' }, syncStatus),
       tab === 'dashboard' && E(Dashboard, { championship, players, groups, matches, seeds, championships }),
-      tab === 'championships' && E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds }),
+      tab === 'championships' && E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship }),
       tab === 'players' && E(PlayersModule, shared),
       tab === 'setup' && E(SetupModule, { championship, setChampionship, players }),
       tab === 'groups' && E(GroupsModule, shared),
@@ -331,4 +399,12 @@ export default function App() {
       onClose: () => setHistoryPlayerId('')
     }) : null
   );
+}
+
+export default function App() {
+  return E(AuthGate, { render: (auth) => {
+    const token = sharedTokenFromLocation();
+    if (token) return E(SharedChampionshipView, { token, auth });
+    return E(AppShell, { key: auth.user?.id, auth });
+  } });
 }
