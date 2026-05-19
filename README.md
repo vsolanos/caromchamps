@@ -1,4 +1,4 @@
-# CaromChamps v5.2.0
+# CaromChamps v5.3.0
 
 Actualización funcional y visual enfocada en producción web: pantalla de ingreso premium, modo claro por defecto, menú colapsable, perfil de usuario, fechas localizadas por idioma, reapertura controlada de grupos, mejora del PDF continuo R32/Dieciseisavos y primera versión de campeonatos tipo Ranking.
 
@@ -379,3 +379,20 @@ src/
 ### Nota v5.2.0
 
 Esta versión corrige un error crítico posterior al login que podía dejar la aplicación en blanco y agrega una pantalla de recuperación ante errores de runtime.
+
+
+## v5.3.0 - Ajustes de llaves Face to Face y flujo R0
+
+- Se elimina el botón visible **Bracket después R0**.
+- El botón **Generar siguiente ronda** ahora cambia a **Generar bracket principal** cuando corresponde salir de R0.
+- Se bloquea la duplicación del bracket principal posterior a R0.
+- Se rediseña la vista **Face to Face** con dos mitades simétricas del bracket y final central.
+- El PDF Face to Face se genera en horizontal, Todo 1 Página, con diseño alineado a la visualización continua.
+- En modo claro, la tabla **Clasificados de primera fase** muestra toda su data en azul.
+- Se agrega `public/_redirects` para evitar error al refrescar rutas en Cloudflare Pages.
+
+
+### Hotfix v5.3.0 - carga post-login
+- Se reforzó AuthGate para que la app principal cargue inmediatamente después del login usando un perfil local de sesión.
+- La sincronización con Supabase queda asincrónica y no bloquea el render de la aplicación.
+- Se agregaron timeouts y manejo seguro de errores en perfil, estado remoto y auditoría para evitar pantallas en blanco por red/RLS/Supabase.

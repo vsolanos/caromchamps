@@ -3323,3 +3323,198 @@ body.printing-pdf .num-cell { color: #1d4ed8 !important; background: #dbeafe !im
   padding: 12px;
   color: #991b1b;
 }
+
+/* v5.3 · Face to Face bracket, R0 flow simplification and SPA deployment fixes. */
+.face-to-face-premium {
+  width: 100%;
+  overflow-x: auto;
+  padding: 14px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(14,165,233,.14));
+  border: 1px solid rgba(125,211,252,.20);
+}
+.theme-light .face-to-face-premium {
+  background: linear-gradient(135deg, #ffffff, #eff6ff);
+  border-color: rgba(59,130,246,.22);
+}
+.face-header-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: #bae6fd;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.theme-light .face-header-note { color: #1E3A8A; }
+.face-grid-balanced {
+  display: grid;
+  grid-template-columns: minmax(980px, 1.35fr) minmax(360px, .48fr) minmax(980px, 1.35fr);
+  gap: 36px;
+  align-items: center;
+  min-width: 2400px;
+}
+.face-branch {
+  display: grid;
+  gap: 28px;
+  align-items: start;
+}
+.face-left-branch { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+.face-right-branch { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+.face-round-column {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 330px;
+  position: relative;
+}
+.face-round-matches {
+  display: grid;
+  gap: 26px;
+  align-content: start;
+}
+.face-round-title { margin-bottom: 4px; }
+.face-center-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 560px;
+  position: relative;
+}
+.face-final-wrap {
+  position: relative;
+  width: 360px;
+}
+.face-final-wrap .continuous-match::before,
+.face-final-wrap .continuous-match::after { display: none; }
+.face-champion-node {
+  position: absolute;
+  left: calc(100% + 22px);
+  top: 54%;
+  transform: translateY(-50%);
+  min-width: 230px;
+  min-height: 118px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(254,243,199,.98), rgba(255,255,255,.96));
+  border: 2px solid rgba(234,179,8,.72);
+  box-shadow: 0 20px 40px rgba(15,23,42,.18);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  padding: 16px;
+  color: #1E3A8A;
+  z-index: 3;
+}
+.face-champion-node .trophy { font-size: 28px; }
+.face-champion-node span { font-size: 12px; color: #dc2626; font-weight: 950; text-transform: uppercase; }
+.face-champion-node b { color: #0284c7; font-size: 18px; text-align: center; }
+.face-champion-line {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 24px;
+  border-top: 2px solid #facc15;
+}
+.face-left-branch .face-round-column:not(:last-child)::after,
+.face-right-branch .face-round-column:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -18px;
+  width: 18px;
+  border-top: 2px solid rgba(250,204,21,.75);
+}
+.face-right-branch .face-round-column:not(:last-child)::after {
+  right: auto;
+  left: -18px;
+}
+
+.theme-light .first-phase-qualified-report .first-phase-table th,
+.theme-light .first-phase-qualified-report .first-phase-table td,
+.theme-light .first-phase-qualified-report .first-phase-table td *,
+.theme-light .first-phase-qualified-report .first-phase-table th * {
+  color: #1E3A8A !important;
+}
+
+@media print {
+  body.printing-reports .first-phase-qualified-report .first-phase-table th,
+  body.printing-reports .first-phase-qualified-report .first-phase-table td,
+  body.printing-reports .first-phase-qualified-report .first-phase-table td *,
+  body.printing-reports .first-phase-qualified-report .first-phase-table th * {
+    color: #1E3A8A !important;
+  }
+
+  body.printing-bracket-face.pdf-fit-one-page .pdf-page-table,
+  body.printing-bracket-face.pdf-fit-one-page .pdf-page-thead,
+  body.printing-bracket-face.pdf-fit-one-page .pdf-page-tbody,
+  body.printing-bracket-face.pdf-fit-one-page .pdf-page-table tr,
+  body.printing-bracket-face.pdf-fit-one-page .pdf-page-table td {
+    display: block !important;
+    width: 100% !important;
+    border: 0 !important;
+    padding: 0 !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .pdf-print-header {
+    top: 3mm !important;
+    left: 4mm !important;
+    right: 4mm !important;
+    min-height: 20mm !important;
+    max-height: 24mm !important;
+    padding: 2mm 4mm !important;
+    overflow: hidden !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .bracket-print-scope {
+    padding-top: 26mm !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium {
+    zoom: var(--pdf-scale, .24) !important;
+    width: calc(100% / var(--pdf-scale, .24)) !important;
+    max-width: none !important;
+    min-width: 2500px !important;
+    padding: 4px !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-header-note { display: none !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-grid-balanced {
+    min-width: 2500px !important;
+    grid-template-columns: minmax(990px, 1.35fr) minmax(390px, .5fr) minmax(990px, 1.35fr) !important;
+    gap: 32px !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-round-column { min-width: 330px !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-round-matches { gap: 18px !important; }
+  body.printing-bracket-face.pdf-fit-one-page .continuous-match {
+    background: #ffffff !important;
+    color: #1E3A8A !important;
+    border: 1.5px solid #93C5FD !important;
+    box-shadow: none !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .continuous-match *,
+  body.printing-bracket-face.pdf-fit-one-page .round-premium-title * {
+    color: #1E3A8A !important;
+    font-weight: 900 !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .continuous-match-head p,
+  body.printing-bracket-face.pdf-fit-one-page .bracket-stat-row,
+  body.printing-bracket-face.pdf-fit-one-page .bracket-serie-row,
+  body.printing-bracket-face.pdf-fit-one-page .continuous-winner {
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .bracket-name-line,
+  body.printing-bracket-face.pdf-fit-one-page .bracket-name-line b {
+    font-size: 13px !important;
+    line-height: 1.12 !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-champion-node {
+    background: #FEF3C7 !important;
+    color: #1E3A8A !important;
+    box-shadow: none !important;
+  }
+}

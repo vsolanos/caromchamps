@@ -1,3 +1,13 @@
+# v5.3.0 - 2026-05-18
+
+- Eliminado el botón **Bracket después R0** para evitar duplicidad de llaves.
+- `Generar siguiente ronda` asume automáticamente la generación del bracket principal posterior a R0.
+- Agregada auditoría `DUPLICATE_BRACKET_BLOCKED` para intentos bloqueados de duplicar bracket.
+- Rediseñada visualización **Face to Face** como llave izquierda/derecha con final central y campeón.
+- PDF **Face to Face** configurado en horizontal y Todo 1 Página.
+- Forzado color azul para toda la data de **Clasificados de primera fase** en modo claro y PDF.
+- Agregado `public/_redirects` para fallback SPA en Cloudflare Pages al refrescar la página.
+
 
 ## v5.2.0 - Corrección crítica de acceso post-login
 
@@ -424,3 +434,9 @@
 - Historial de jugador: línea seleccionada en rojo y panel de detalle reducido 35%.
 - Ajustes de colores en modo claro para la visualización continua.
 - Planillas oficiales: columnas NUM, CON, CAR, ACU; hora/mesa en blanco; estructura centrada en Carta y resumen final fijo.
+
+
+### Hotfix v5.3.0 - carga post-login
+- Se reforzó AuthGate para que la app principal cargue inmediatamente después del login usando un perfil local de sesión.
+- La sincronización con Supabase queda asincrónica y no bloquea el render de la aplicación.
+- Se agregaron timeouts y manejo seguro de errores en perfil, estado remoto y auditoría para evitar pantallas en blanco por red/RLS/Supabase.

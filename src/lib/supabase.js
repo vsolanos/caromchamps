@@ -5,6 +5,13 @@ export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_p
 export const ADMIN_EMAIL = 'vsolanos@gmail.com';
 export const APP_ORIGIN = typeof window !== 'undefined' ? window.location.origin : 'https://caromchamps.com';
 
+function withTimeout(promise, label = 'Operación Supabase', ms = 8000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} excedió el tiempo de espera.`)), ms))
+  ]);
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
@@ -37,30 +44,45 @@ export async function ensureUserProfile(user, metadata = {}) {
     status: 'ACTIVE',
     updated_at: new Date().toISOString()
   };
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(payload, { onConflict: 'id' })
-    .select()
-    .single();
-  return { profile: data, error };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select().single(),
+      'Carga/creación de perfil'
+    );
+    if (error) return { profile: { ...payload }, error };
+    return { profile: data || { ...payload }, error: null };
+  } catch (error) {
+    console.warn('No fue posible sincronizar el perfil en Supabase; se usará perfil local de sesión.', error);
+    return { profile: { ...payload }, error };
+  }
 }
 
 export async function loadUserAppState(userId) {
   if (!userId) return { state: null, error: null };
-  const { data, error } = await supabase
-    .from('user_app_states')
-    .select('state, updated_at')
-    .eq('owner_user_id', userId)
-    .maybeSingle();
-  return { state: data?.state || null, updated_at: data?.updated_at || null, error };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('user_app_states').select('state, updated_at').eq('owner_user_id', userId).maybeSingle(),
+      'Carga de estado de usuario'
+    );
+    return { state: data?.state || null, updated_at: data?.updated_at || null, error };
+  } catch (error) {
+    console.warn('No fue posible cargar estado remoto; se usará estado local.', error);
+    return { state: null, error };
+  }
 }
 
 export async function saveUserAppState(userId, state) {
   if (!userId) return { error: null };
-  const { error } = await supabase
-    .from('user_app_states')
-    .upsert({ owner_user_id: userId, state, updated_at: new Date().toISOString() }, { onConflict: 'owner_user_id' });
-  return { error };
+  try {
+    const { error } = await withTimeout(
+      supabase.from('user_app_states').upsert({ owner_user_id: userId, state, updated_at: new Date().toISOString() }, { onConflict: 'owner_user_id' }),
+      'Guardado de estado de usuario'
+    );
+    return { error };
+  } catch (error) {
+    console.warn('No fue posible guardar estado remoto; se conserva estado local.', error);
+    return { error };
+  }
 }
 
 export async function createChampionshipShare({ userId, championshipSnapshot }) {
@@ -93,5 +115,9 @@ export async function getChampionshipShare(token) {
 
 export async function auditCloudEvent(userId, type, detail) {
   if (!userId) return;
-  await supabase.from('audit_logs').insert({ user_id: userId, type, detail });
+  try {
+    await withTimeout(supabase.from('audit_logs').insert({ user_id: userId, type, detail }), 'Auditoría', 5000);
+  } catch (error) {
+    console.warn('No fue posible registrar auditoría remota.', error);
+  }
 }

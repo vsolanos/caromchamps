@@ -54,24 +54,40 @@ export function AuthGate({ render }) {
 
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(async ({ data }) => {
+    const fallbackProfile = (user) => user ? {
+      email: user.email,
+      full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+      country_iso: user.user_metadata?.country_iso || 'CR',
+      phone_country_code: user.user_metadata?.phone_country_code || '+506',
+      phone_local: user.user_metadata?.phone_local || '',
+      avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+      role: isAdminEmail(user.email) ? 'ADMIN' : 'ORGANIZER',
+      status: 'ACTIVE'
+    } : null;
+
+    const hydrateProfile = async (user) => {
+      if (!user) return;
+      setProfile(fallbackProfile(user));
+      const { profile: savedProfile } = await ensureUserProfile(user);
+      if (active && savedProfile) setProfile(savedProfile);
+    };
+
+    supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setSession(data.session || null);
-      if (data.session?.user) {
-        const { profile: savedProfile } = await ensureUserProfile(data.session.user);
-        setProfile(savedProfile || null);
-      }
+      const nextSession = data.session || null;
+      setSession(nextSession);
       setLoading(false);
+      if (nextSession?.user) hydrateProfile(nextSession.user);
+    }).catch((error) => {
+      console.warn('No fue posible leer sesión Supabase.', error);
+      if (active) setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession || null);
-      if (nextSession?.user) {
-        const { profile: savedProfile } = await ensureUserProfile(nextSession.user);
-        setProfile(savedProfile || null);
-      } else {
-        setProfile(null);
-      }
       setLoading(false);
+      if (nextSession?.user) hydrateProfile(nextSession.user);
+      else setProfile(null);
     });
     return () => { active = false; sub?.subscription?.unsubscribe?.(); };
   }, []);

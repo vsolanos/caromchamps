@@ -346,17 +346,78 @@ function continuousPdfPreset(matches, selectedPageSize = 'Letter', selectedOrien
   };
 }
 
-function FaceToFaceView({ matches, playerMap }) {
-  const sorted = [...matches].sort((a, b) => roundOrder(matchRoundKey(a)) - roundOrder(matchRoundKey(b)) || (a.bracket_order || 0) - (b.bracket_order || 0));
-  const final = sorted.find((m) => matchRoundKey(m) === 'F');
-  const left = sorted.filter((m, i) => i % 2 === 0 && (!final || m.match_id !== final.match_id));
-  const right = sorted.filter((m, i) => i % 2 === 1 && (!final || m.match_id !== final.match_id));
-  return E('div', { className: 'face-grid' },
-    E('div', { className: 'face-side' }, left.map((m) => E(MatchCard, { key: m.match_id, match: m, playerMap, allMatches: matches }))),
-    E('div', { className: 'face-center' }, final ? E(MatchCard, { match: final, playerMap, allMatches: matches }) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })),
-    E('div', { className: 'face-side' }, right.map((m) => E(MatchCard, { key: m.match_id, match: m, playerMap, allMatches: matches })))
+
+function mainFaceRounds(matches) {
+  return [...new Set(matches.filter((m) => m.phase === 'KO').map((m) => matchRoundKey(m)))]
+    .filter((round) => round !== 'F')
+    .sort((a, b) => roundOrder(a) - roundOrder(b));
+}
+
+function sideRoundMatches(matches, round, side) {
+  const rows = matches
+    .filter((m) => m.phase === 'KO' && matchRoundKey(m) === round)
+    .sort((a, b) => num(a.bracket_order) - num(b.bracket_order));
+  if (!rows.length) return [];
+  const half = Math.ceil(rows.length / 2);
+  return side === 'left' ? rows.slice(0, half) : rows.slice(half);
+}
+
+function FaceRoundColumn({ round, rows, playerMap, matches, side }) {
+  return E('div', { className: `face-round-column face-round-${side}` },
+    E('div', { className: 'round-premium-title face-round-title' },
+      E('h3', null, shortRound(round).toUpperCase()),
+      E('span', null, `${rows.length * 2} jugadores`)
+    ),
+    E('div', { className: 'face-round-matches' },
+      rows.map((match) => E(MatchCard, {
+        key: match.match_id,
+        match,
+        playerMap,
+        allMatches: matches,
+        cardHeight: 276
+      }))
+    )
   );
 }
+
+function FaceToFaceView({ matches, playerMap }) {
+  const rounds = mainFaceRounds(matches);
+  const final = matches.find((m) => matchRoundKey(m) === 'F');
+  const championTop = final?.winner_id ? 318 : 0;
+  const leftRounds = rounds.map((round) => ({ round, rows: sideRoundMatches(matches, round, 'left') })).filter((item) => item.rows.length);
+  const rightRounds = rounds.map((round) => ({ round, rows: sideRoundMatches(matches, round, 'right') })).filter((item) => item.rows.length).reverse();
+
+  return E('div', { className: 'face-to-face-premium' },
+    E('div', { className: 'face-header-note' },
+      E('b', null, 'Visualización Face to Face'),
+      E('span', null, 'La mitad superior del bracket alimenta la final desde la izquierda y la mitad inferior desde la derecha.')
+    ),
+    E('div', { className: 'face-grid face-grid-balanced' },
+      E('div', { className: 'face-branch face-left-branch' },
+        leftRounds.map(({ round, rows }) => E(FaceRoundColumn, { key: `left-${round}`, round, rows, playerMap, matches, side: 'left' }))
+      ),
+      E('div', { className: 'face-center-stage' },
+        final ? E('div', { className: 'face-final-wrap' },
+          E('div', { className: 'round-premium-title face-round-title' },
+            E('h3', null, 'FINAL'),
+            E('span', null, '2 jugadores')
+          ),
+          E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292 }),
+          final.winner_id ? E('div', { className: 'face-champion-node' },
+            E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
+            E('div', { className: 'trophy' }, '🏆'),
+            E('span', null, 'Campeón / Ganador'),
+            E('b', null, playerName(playerMap[final.winner_id]))
+          ) : null
+        ) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })
+      ),
+      E('div', { className: 'face-branch face-right-branch' },
+        rightRounds.map(({ round, rows }) => E(FaceRoundColumn, { key: `right-${round}`, round, rows, playerMap, matches, side: 'right' }))
+      )
+    )
+  );
+}
+
 
 export function BracketModule({ championship, players, matches, setMatches, seeds, audit }) {
   const [view, setView] = useState('tabular');
@@ -369,6 +430,9 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   const preMatches = matches.filter((m) => m.phase === 'PRE_ELIMINATION').sort((a, b) => (a.bracket_order || 0) - (b.bracket_order || 0));
   const koMatches = matches.filter((m) => m.phase === 'KO').sort((a, b) => roundOrder(a.ko_round) - roundOrder(b.ko_round) || (a.bracket_order || 0) - (b.bracket_order || 0));
   const allElimination = useMemo(() => [...preMatches, ...koMatches], [preMatches, koMatches]);
+  const activePreMatches = preMatches.filter((m) => m.match_status !== 'PLANNED');
+  const activeKoMatches = koMatches.filter((m) => m.match_status !== 'PLANNED');
+  const nextRoundButtonLabel = activePreMatches.length && !activeKoMatches.length ? 'Generar bracket principal' : 'Generar siguiente ronda';
 
   const replaceEliminationMatches = (newMatches) => setMatches([...matches.filter((m) => !['PRE_ELIMINATION', 'KO'].includes(m.phase)), ...newMatches]);
   const generateInitial = () => {
@@ -388,32 +452,26 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     setMatches(mergeById(matches, completed));
     audit('BRACKET_RANDOM_RESULTS', `Resultados aplicados a ${completed.length} partidas.`);
   };
-  const generateMainAfterPre = () => {
-    if (!preMatches.length) return alert('No existe preclasificación pendiente para este bracket.');
-    const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
-    const activePre = preMatches.filter((m) => m.match_status !== 'PLANNED');
-    const result = generateMainBracketAfterPre(championship, seeds, activePre.length ? activePre : preMatches, start);
-    if (result.error) return alert(result.error);
-    const merged = mergeWithProjectedSchedule(result.matches, matches);
-    setMatches([...matches.filter((m) => !(m.phase === 'KO' && m.ko_round === merged[0]?.ko_round && m.match_status === 'PLANNED')), ...merged]);
-    audit('MAIN_BRACKET_AFTER_PRE', `Bracket principal generado: ${merged.length} partidas, conservando fechas/horas/mesas proyectadas.`);
-  };
   const generateNext = () => {
     const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
-    const activePre = preMatches.filter((m) => m.match_status !== 'PLANNED');
-    const activeKo = koMatches.filter((m) => m.match_status !== 'PLANNED');
+    const activePre = activePreMatches;
+    const activeKo = activeKoMatches;
 
     // Si el campeonato tuvo R0/preclasificación, este mismo botón activa el bracket principal
     // luego de completar R0. Solo cambia jugadores; conserva fecha, hora y mesa proyectadas.
     if (activePre.length && !activeKo.length) {
       if (activePre.some((m) => m.match_status !== 'COMPLETED' || !m.winner_id)) {
-        return alert('Debe completar todas las partidas de preclasificación/R0 antes de generar la siguiente ronda.');
+        return alert('Debe completar todas las partidas de preclasificación/R0 antes de generar el bracket principal.');
+      }
+      if (koMatches.some((m) => m.match_status !== 'PLANNED')) {
+        audit('DUPLICATE_BRACKET_BLOCKED', 'Se bloqueó intento de duplicar bracket principal posterior a R0.');
+        return alert('El bracket principal posterior a R0 ya existe. Use Generar siguiente ronda para avanzar o Regresar fase para corregir.');
       }
       const main = generateMainBracketAfterPre(championship, seeds, activePre, start);
       if (main.error) return alert(main.error);
       const merged = mergeWithProjectedSchedule(main.matches, matches);
       setMatches([...matches.filter((m) => !(m.phase === 'KO' && m.ko_round === merged[0]?.ko_round && m.match_status === 'PLANNED')), ...merged]);
-      audit('NEXT_KO_ROUND', `${roundDisplayName(merged[0]?.ko_round)} generada con jugadores reales, conservando fecha, hora y mesa proyectadas.`);
+      audit('BRACKET_MAIN_AFTER_R0', `${roundDisplayName(merged[0]?.ko_round)} generada con jugadores reales después de R0, conservando fecha, hora y mesa proyectadas.`);
       return;
     }
 
@@ -457,17 +515,18 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     const continuousPreset = view === 'continuous' ? continuousPdfPreset(allElimination, pageSize, orientation) : null;
     const roundsForPrint = new Set(allElimination.map((match) => matchRoundKey(match)));
     const tabularR32Class = view === 'tabular' && roundsForPrint.has('R32') ? ' bracket-tabular-r32' : '';
-    const printPageSize = continuousPreset?.pageSize || pageSize;
-    const printOrientation = continuousPreset?.orientation || orientation;
-    const printScale = continuousPreset?.scale || scale;
+    const faceClass = view === 'face' ? ' printing-bracket-face' : '';
+    const printPageSize = view === 'face' ? pageSize : (continuousPreset?.pageSize || pageSize);
+    const printOrientation = view === 'face' ? 'landscape' : (continuousPreset?.orientation || orientation);
+    const printScale = view === 'face' ? 'fit' : (continuousPreset?.scale || scale);
     const continuousClass = continuousPreset ? ` printing-bracket-continuous bracket-continuous-${continuousPreset.key} ${continuousPreset.extraClass || ''}` : '';
     startPdfPrint({
-      bodyClass: `printing-bracket${continuousClass}${tabularR32Class}`,
-      title: `Llaves - ${championship.name || 'Campeonato'} - ${viewLabel}${continuousPreset ? ' - ' + continuousPreset.label : ''}`,
+      bodyClass: `printing-bracket${continuousClass}${tabularR32Class}${faceClass}`,
+      title: `Llaves - ${championship.name || 'Campeonato'} - ${viewLabel}${continuousPreset ? ' - ' + continuousPreset.label : ''}${view === 'face' ? ' - Horizontal Todo 1 Página' : ''}`,
       pageSize: printPageSize,
       orientation: printOrientation,
       scale: printScale,
-      afterPrint: () => audit('BRACKET_PDF', `PDF generado desde vista ${viewLabel}${continuousPreset ? ' · ' + continuousPreset.label : ''}.`)
+      afterPrint: () => audit('BRACKET_PDF', `PDF generado desde vista ${viewLabel}${continuousPreset ? ' · ' + continuousPreset.label : ''}${view === 'face' ? ' · Horizontal Todo 1 Página' : ''}.`)
     });
   };
 
@@ -478,8 +537,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
         E('div', { className: 'toolbar' },
           E(Button, { onClick: generateInitial }, 'Generar estructura'),
           E(Button, { onClick: fillCurrent, kind: 'success' }, 'Resultados ronda activa'),
-          E(Button, { onClick: generateMainAfterPre, kind: 'warning' }, 'Bracket después R0'),
-          E(Button, { onClick: generateNext, kind: 'success' }, 'Generar siguiente ronda'),
+          E(Button, { onClick: generateNext, kind: 'success' }, nextRoundButtonLabel),
           E(Button, { onClick: exportCurrentViewPdf, kind: 'soft' }, 'Generar PDF'),
           E(Button, { onClick: rollbackPreviousPhase, kind: 'danger' }, 'Regresar fase')
         ),
@@ -502,7 +560,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       !allElimination.length ? E(EmptyState, { title: 'Sin bracket', message: 'Clasifique grupos y genere la estructura de eliminación directa.' }) : null,
       allElimination.length && view === 'tabular' ? E(TabularView, { matches: allElimination, playerMap }) : null,
       allElimination.length && view === 'continuous' ? E(ContinuousView, { matches: allElimination, playerMap }) : null,
-      allElimination.length && view === 'face' ? E(Card, null, E(FaceToFaceView, { matches: allElimination, playerMap })) : null
+      allElimination.length && view === 'face' ? E(FaceToFaceView, { matches: allElimination, playerMap }) : null
       )
     )
   );

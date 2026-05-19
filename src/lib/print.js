@@ -35,6 +35,7 @@ export function startPdfPrint({ bodyClass, title, pageSize = 'A4', orientation =
   const isContinuousLegal = bodyClasses.includes('bracket-continuous-legal');
   const isContinuousR32Plus = bodyClasses.includes('bracket-continuous-r32plus');
   const isTabularR32 = bodyClasses.includes('bracket-tabular-r32');
+  const isFaceBracket = bodyClasses.includes('printing-bracket-face');
   const isScoreSheets = bodyClasses.includes('printing-score-sheets');
   // v4.0: continuous bracket exports use fixed vertical one-page presets.
   // Letter is used when the bracket starts in Octavos/R16; Legal is used for
@@ -43,7 +44,7 @@ export function startPdfPrint({ bodyClass, title, pageSize = 'A4', orientation =
   // reviewing the Letter PDF output; the previous preset left too much unused
   // page space and made match cards hard to read.
   const scaleNumber = fitOnePage
-    ? (isContinuousR32Plus ? 0.205 : isContinuousLetter ? 0.45 : isContinuousLegal ? 0.38 : isTabularR32 ? 0.3375 : isBracketPrint ? 0.27 : 0.45)
+    ? (isFaceBracket ? 0.24 : isContinuousR32Plus ? 0.205 : isContinuousLetter ? 0.45 : isContinuousLegal ? 0.38 : isTabularR32 ? 0.3375 : isBracketPrint ? 0.27 : 0.45)
     : Math.max(0.5, Math.min(1.25, Number(scale || 100) / 100));
   const orientationClass = "pdf-orientation-" + orientation;
   const pageSizeClass = "pdf-page-" + String(pageSize).toLowerCase();
@@ -52,7 +53,7 @@ export function startPdfPrint({ bodyClass, title, pageSize = 'A4', orientation =
   if (oldStyle) oldStyle.remove();
   const style = document.createElement('style');
   style.id = styleId;
-  const pageMargin = isScoreSheets ? '2.5mm 2.5mm 2.5mm 2.5mm' : (fitOnePage ? (isContinuousBracket ? '3mm 3mm 3mm 3mm' : isBracketPrint ? '4mm 4mm 4mm 4mm' : '6mm 6mm 6mm 6mm') : '8mm 8mm 10mm 8mm');
+  const pageMargin = isScoreSheets ? '2.5mm 2.5mm 2.5mm 2.5mm' : (fitOnePage ? (isContinuousBracket || isFaceBracket ? '3mm 3mm 3mm 3mm' : isBracketPrint ? '4mm 4mm 4mm 4mm' : '6mm 6mm 6mm 6mm') : '8mm 8mm 10mm 8mm');
   style.textContent = `@media print { @page { size: ${pageSize} ${orientation}; margin: ${pageMargin}; } }`;
   document.head.appendChild(style);
   document.title = safeFileName(title);
