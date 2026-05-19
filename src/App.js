@@ -41,12 +41,17 @@ function sharedTokenFromLocation() {
   return match?.[1] || '';
 }
 
+const RANKING_BLOCKED_TABS = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
+
 function Header({ championship, tab, setTab, collapsed, setCollapsed, auth }) {
-  const tabs = [
+  const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
+  const allTabs = [
     ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
     ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
     ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['audit', 'Auditoría', '◎']
   ];
+  const rankingHiddenTabs = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
+  const tabs = isRankingChampionship ? allTabs.filter(([id]) => !rankingHiddenTabs.has(id)) : allTabs;
   const navigate = (id) => setTab(id);
   return E('header', { className: `header ${collapsed ? 'collapsed' : ''}` },
     E('div', { className: 'brand-block' },
@@ -242,6 +247,11 @@ function AppShell({ auth }) {
   const [syncStatus, setSyncStatus] = useState('Sincronización local activa');
   const [remoteReady, setRemoteReady] = useState(false);
   const didLoadRemote = useRef(false);
+  const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
+
+  useEffect(() => {
+    if (isRankingChampionship && RANKING_BLOCKED_TABS.has(tab)) setTab('ranking');
+  }, [isRankingChampionship, tab]);
 
 
   useEffect(() => {
@@ -408,14 +418,14 @@ ${link}`);
     E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth }),
     E('main', { className: 'main' },
       E(TopBar, { championship, auth, setTab }),
-      E(Card, null,
+      !isRankingChampionship ? E(Card, null,
         E('div', { className: 'toolbar' },
           E(Button, { onClick: runFullDemo, kind: 'success' }, 'Demo completa'),
           E(Button, { onClick: () => { setMatches(autoFillMatches(matches, 'quick-fill')); audit('QUICK_RESULTS', 'Resultados rápidos aplicados.'); }, kind: 'success' }, 'Resultados rápidos'),
           E(Button, { onClick: clearOnlyResults, kind: 'warning' }, 'Limpiar resultados'),
           E(Button, { onClick: resetDemo, kind: 'danger' }, 'Reiniciar demo')
         )
-      ),
+      ) : null,
       E('div', { className: 'sync-status' }, syncStatus),
       tab === 'dashboard' && E(Dashboard, { championship, players, groups, matches, seeds, championships }),
       tab === 'championships' && E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship }),
@@ -426,7 +436,7 @@ ${link}`);
       tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit }),
       tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, audit }),
       tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
-      tab === 'ranking' && E(RankingModule, { championship, championships }),
+      tab === 'ranking' && E(RankingModule, { championship, championships, players }),
       tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
       tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
       tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),

@@ -44,7 +44,7 @@ export function startPdfPrint({ bodyClass, title, pageSize = 'A4', orientation =
   // reviewing the Letter PDF output; the previous preset left too much unused
   // page space and made match cards hard to read.
   const scaleNumber = fitOnePage
-    ? (isFaceBracket ? 0.24 : isContinuousR32Plus ? 0.205 : isContinuousLetter ? 0.45 : isContinuousLegal ? 0.38 : isTabularR32 ? 0.3375 : isBracketPrint ? 0.27 : 0.45)
+    ? (isFaceBracket ? 0.30 : isContinuousR32Plus ? 0.205 : isContinuousLetter ? 0.45 : isContinuousLegal ? 0.38 : isTabularR32 ? 0.3375 : isBracketPrint ? 0.27 : 0.45)
     : Math.max(0.5, Math.min(1.25, Number(scale || 100) / 100));
   const orientationClass = "pdf-orientation-" + orientation;
   const pageSizeClass = "pdf-page-" + String(pageSize).toLowerCase();

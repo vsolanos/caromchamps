@@ -5,6 +5,14 @@ import { auditCloudEvent, ensureUserProfile, isAdminEmail, supabase } from '../l
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
+
+function withLocalTimeout(promise, ms = 6000, label = 'Operación') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} excedió el tiempo de espera.`)), ms))
+  ]);
+}
+
 function initialForm() {
   return { full_name: '', email: '', password: '', country_iso: 'CR', phone_local: '', avatar_file: null };
 }
@@ -72,15 +80,20 @@ export function AuthGate({ render }) {
       if (active && savedProfile) setProfile(savedProfile);
     };
 
-    supabase.auth.getSession().then(({ data }) => {
+    withLocalTimeout(supabase.auth.getSession(), 6000, 'Lectura de sesión').then(({ data }) => {
       if (!active) return;
       const nextSession = data.session || null;
       setSession(nextSession);
       setLoading(false);
       if (nextSession?.user) hydrateProfile(nextSession.user);
     }).catch((error) => {
-      console.warn('No fue posible leer sesión Supabase.', error);
-      if (active) setLoading(false);
+      console.warn('No fue posible leer sesión Supabase. Se libera la pantalla de inicio para evitar bloqueo tras refrescar.', error);
+      if (active) {
+        setSession(null);
+        setProfile(null);
+        setLoading(false);
+        setMessage('No fue posible validar la sesión automáticamente. Inicie sesión nuevamente si es necesario.');
+      }
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -96,7 +109,7 @@ export function AuthGate({ render }) {
 
   const signIn = async () => {
     setBusy(true); setMessage('');
-    const { error } = await supabase.auth.signInWithPassword({ email: form.email.trim().toLowerCase(), password: form.password });
+    const { error } = await withLocalTimeout(supabase.auth.signInWithPassword({ email: form.email.trim().toLowerCase(), password: form.password }), 10000, 'Inicio de sesión');
     if (error) setMessage(authErrorMessage(error));
     else await auditCloudEvent(session?.user?.id, 'LOGIN', 'Inicio de sesión por correo.');
     setBusy(false);
@@ -114,11 +127,11 @@ export function AuthGate({ render }) {
       phone_local: phone.local,
       phone_e164: phone.e164
     };
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await withLocalTimeout(supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
       options: { data: metadata, emailRedirectTo: window.location.origin }
-    });
+    }), 12000, 'Registro de usuario');
     if (error) setMessage(authErrorMessage(error));
     else if (data.session?.user) {
       let avatar_url = '';
@@ -138,10 +151,10 @@ export function AuthGate({ render }) {
 
   const socialLogin = async (provider) => {
     setBusy(true); setMessage('');
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error } = await withLocalTimeout(supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.href }
-    });
+      options: { redirectTo: window.location.origin }
+    }), 10000, 'Login social');
     if (error) setMessage(authErrorMessage(error));
     setBusy(false);
   };

@@ -1,4 +1,49 @@
-# CaromChamps v5.3.0
+# CaromChamps v5.7.0
+
+Actualización enfocada en el flujo de campeonatos tipo Ranking, corrección de visualización Face to Face, alineación de banderas en tablas de grupos, mensajes de confirmación en llaves y scroll del menú lateral.
+
+## Cambios principales v5.7.0
+
+- Face to Face: la partida Final se desplaza hacia abajo para separarla visualmente de las semifinales.
+- Face to Face: el card de Campeón/Ganador ahora aparece debajo del card de la Final, con conector vertical.
+- PDF Face to Face: aumentada la escala del modo Todo 1 Página y reducido espacio desperdiciado para una visualización más amplia y cómoda.
+- Ranking: la columna Jugador ahora incluye historial clicable, asociación y bandera del país alineadas horizontal y verticalmente.
+- Ranking: el cálculo ahora incluye solamente jugadores que participaron en campeonatos normales asociados al ranking.
+- Ranking: al crear un campeonato tipo Ranking no se requiere ni conserva selección de jugadores participantes.
+- `package.json` actualizado a versión `5.7.0`.
+
+
+## Cambios principales v5.6.0
+
+- Visualización Face to Face reconstruida con geometría tipo árbol, posiciones absolutas por ronda y conectores SVG basados en fuentes reales de partidas.
+- R0 se integra como alimentador visual de la primera ronda principal en Face to Face.
+- Ranking: puntos de ranking ganados (PRG) en color rojo en tablas generales, detalle y PDF.
+- Ranking: métricas acumuladas y por campeonato: PRG, PJ, PG, PP, PE, CAR, ENT y AVG.
+- Ranking: nuevo reporte PDF de tabla de posiciones con estándares institucionales de la plataforma.
+
+## Cambios principales v5.5.0
+
+- Campeonatos tipo **Ranking**: se ocultan los pasos operativos normales de grupos, reglas por fase, selección de jugadores y mesas físicas.
+- Menú lateral: en campeonatos Ranking se ocultan módulos operativos que no aplican y se redirige automáticamente hacia Ranking si el usuario estaba en una sección no válida.
+- Grupos: banderas alineadas en tabla de posiciones y tablas derivadas.
+- Llaves: mensajes de confirmación visibles después de generar estructura, resultados de ronda activa, siguiente ronda, PDF y regreso de fase.
+- Face to Face: reconstrucción de ramas izquierda/derecha usando fuentes reales de partidas (`source_match1_id` / `source_match2_id`) e inclusión de R0 cuando alimenta posiciones del bracket principal.
+- Menú: scroll vertical para que las opciones finales siempre sean visibles al cambiar el tamaño de pantalla.
+- Ranking: tabla acumulada por jugador y matriz de puntos por campeonato jugado, más detalle por campeonato asociado.
+- `package.json` actualizado a versión `5.6.0`.
+
+## Instalación y validación
+
+```powershell
+npm.cmd install --registry=https://registry.npmjs.org/
+npm.cmd run check:syntax
+npm.cmd run build
+npm.cmd run dev
+```
+
+---
+
+# CaromChamps v5.4.0
 
 Actualización funcional y visual enfocada en producción web: pantalla de ingreso premium, modo claro por defecto, menú colapsable, perfil de usuario, fechas localizadas por idioma, reapertura controlada de grupos, mejora del PDF continuo R32/Dieciseisavos y primera versión de campeonatos tipo Ranking.
 
@@ -381,7 +426,7 @@ src/
 Esta versión corrige un error crítico posterior al login que podía dejar la aplicación en blanco y agrega una pantalla de recuperación ante errores de runtime.
 
 
-## v5.3.0 - Ajustes de llaves Face to Face y flujo R0
+## v5.4.0 - Ajustes de llaves Face to Face y flujo R0
 
 - Se elimina el botón visible **Bracket después R0**.
 - El botón **Generar siguiente ronda** ahora cambia a **Generar bracket principal** cuando corresponde salir de R0.
@@ -392,7 +437,25 @@ Esta versión corrige un error crítico posterior al login que podía dejar la a
 - Se agrega `public/_redirects` para evitar error al refrescar rutas en Cloudflare Pages.
 
 
-### Hotfix v5.3.0 - carga post-login
+### Hotfix v5.4.0 - carga post-login
 - Se reforzó AuthGate para que la app principal cargue inmediatamente después del login usando un perfil local de sesión.
 - La sincronización con Supabase queda asincrónica y no bloquea el render de la aplicación.
 - Se agregaron timeouts y manejo seguro de errores en perfil, estado remoto y auditoría para evitar pantallas en blanco por red/RLS/Supabase.
+
+
+## v5.4.0 - Estabilidad de refresco local y sesión
+
+- Se agregó `vite.config.js` para fijar puerto local `5173` y evitar cambios silenciosos de puerto al reiniciar.
+- Se agregó timeout de lectura de sesión Supabase para evitar que la app quede bloqueada al refrescar.
+- Se agregó script `npm.cmd run dev:clean` para limpiar cache de Vite/dist cuando Chrome o Vite queden inconsistentes.
+- Se agregaron headers de no-cache para `index.html` en Cloudflare Pages.
+
+Comando recomendado de desarrollo:
+
+```powershell
+npm.cmd run dev:clean
+npm.cmd install --registry=https://registry.npmjs.org/
+npm.cmd run check:syntax
+npm.cmd run build
+npm.cmd run dev
+```

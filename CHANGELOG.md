@@ -1,3 +1,33 @@
+# v5.7.0 - 2026-05-18
+
+- Ajustada la visualización Face to Face para bajar la Final y evitar que se vea pegada a semifinales.
+- Reubicado el card de Campeón/Ganador debajo de la Final con conector vertical.
+- Ampliada la escala del PDF Face to Face en modo Todo 1 Página para reducir espacio en blanco y mejorar legibilidad.
+- Mejorada la tabla Ranking: columna Jugador con historial clicable, asociación y bandera del país alineadas.
+- Corregido Ranking para incluir únicamente jugadores participantes en campeonatos normales asociados.
+- Ajustado campeonato tipo Ranking para no requerir selección/asociación de jugadores.
+- package.json actualizado a `5.7.0`.
+
+# v5.6.0 - 2026-05-18
+
+- Reconstruida la visualización Face to Face con árbol de asociaciones, conectores SVG y posicionamiento derivado de la lógica continua.
+- Corregida la integración visual de R0 como ronda alimentadora de Dieciseisavos/Octavos según corresponda.
+- Ranking actualizado para mostrar PRG en rojo en todos los puntos donde aparece.
+- Ranking ahora muestra PRG, PJ, PG, PP, PE, CAR, ENT y AVG a nivel general y por campeonato jugado.
+- Agregado reporte PDF de tabla de posiciones de ranking con controles institucionales de tamaño, orientación y escala.
+- package.json actualizado a `5.6.0`.
+
+# v5.5.0 - 2026-05-18
+
+- Ranking: los campeonatos tipo Ranking ya no muestran pasos operativos normales posteriores al Paso 1.
+- Ranking: el menú oculta Grupos, Calendario, Partidas, Llaves, Reportes, Árbitros y Cierre cuando el campeonato activo es Ranking.
+- Ranking: agregada matriz de puntos por campeonato jugado y detalle por campeonato asociado.
+- Grupos: corregida la alineación de banderas en tablas de posiciones y tablas derivadas.
+- Llaves: agregados mensajes de confirmación para procesos principales.
+- Face to Face: corregida la asociación de ramas con base en fuentes reales de partidas y agregado soporte visual de R0.
+- Menú: agregado scroll vertical/responsivo para visualizar opciones finales en pantallas pequeñas.
+- package.json actualizado a `5.5.0`.
+
 # v5.3.0 - 2026-05-18
 
 - Eliminado el botón **Bracket después R0** para evitar duplicidad de llaves.
@@ -440,3 +470,11 @@
 - Se reforzó AuthGate para que la app principal cargue inmediatamente después del login usando un perfil local de sesión.
 - La sincronización con Supabase queda asincrónica y no bloquea el render de la aplicación.
 - Se agregaron timeouts y manejo seguro de errores en perfil, estado remoto y auditoría para evitar pantallas en blanco por red/RLS/Supabase.
+
+
+## v5.4.0
+
+- Hotfix de estabilidad local: servidor Vite fijado en localhost:5173 con strictPort.
+- AuthGate ahora libera la pantalla si Supabase no responde al refrescar sesión.
+- Agregado script `dev:clean` para limpiar cache local de Vite y `dist`.
+- Agregado `public/_headers` para evitar cache agresivo de `index.html` en Cloudflare Pages.

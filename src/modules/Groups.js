@@ -66,11 +66,11 @@ function classificationLabel(row, seeds, allComplete) {
 function playerCell(player, championship) {
   const intl = isInternationalChampionship(championship);
   return E('div', { className: 'group-standings-player-cell' },
-    E('div', { className: 'group-standings-player-main' },
-      E('b', null, E(PlayerHistoryTrigger, { player })),
-      miniFlag(player.country_iso)
+    E('div', { className: 'group-standings-player-main aligned-flag-player' },
+      E('span', { className: 'player-flag-slot' }, miniFlag(player.country_iso)),
+      E('span', { className: 'group-standings-player-name' }, E('b', null, E(PlayerHistoryTrigger, { player })))
     ),
-    E('div', { className: 'small player-submeta' }, intl ? (player.country_iso || '-') : (player.association_code || '-'))
+    E('div', { className: 'small player-submeta aligned-player-submeta' }, intl ? (player.country_iso || '-') : (player.association_code || '-'))
   );
 }
 

@@ -348,62 +348,235 @@ function continuousPdfPreset(matches, selectedPageSize = 'Letter', selectedOrien
 
 
 function mainFaceRounds(matches) {
-  return [...new Set(matches.filter((m) => m.phase === 'KO').map((m) => matchRoundKey(m)))]
-    .filter((round) => round !== 'F')
+  return [...new Set((matches || []).map((m) => matchRoundKey(m)))]
+    .filter((round) => round && round !== 'F')
     .sort((a, b) => roundOrder(a) - roundOrder(b));
 }
 
-function sideRoundMatches(matches, round, side) {
-  const rows = matches
-    .filter((m) => m.phase === 'KO' && matchRoundKey(m) === round)
-    .sort((a, b) => num(a.bracket_order) - num(b.bracket_order));
-  if (!rows.length) return [];
-  const half = Math.ceil(rows.length / 2);
-  return side === 'left' ? rows.slice(0, half) : rows.slice(half);
+function sortFaceRows(rows) {
+  return [...rows].sort((a, b) => num(a.bracket_order) - num(b.bracket_order) || num(a.match_number) - num(b.match_number) || String(a.match_id).localeCompare(String(b.match_id)));
 }
 
-function FaceRoundColumn({ round, rows, playerMap, matches, side }) {
-  return E('div', { className: `face-round-column face-round-${side}` },
+function collectFaceBranchIds(matches, rootMatchId) {
+  const byId = new Map((matches || []).map((match) => [match.match_id, match]));
+  const preBySeedPosition = new Map();
+  (matches || []).forEach((match) => {
+    if (match.phase === 'PRE_ELIMINATION' && match.winner_takes_seed_position) {
+      preBySeedPosition.set(num(match.winner_takes_seed_position), match);
+    }
+  });
+  const ids = new Set();
+  const visit = (matchId) => {
+    if (!matchId || ids.has(matchId)) return;
+    const match = byId.get(matchId);
+    if (!match) return;
+    ids.add(matchId);
+    [match.source_match1_id, match.source_match2_id].forEach(visit);
+    [match.seed1_position, match.seed2_position].forEach((seedPosition) => {
+      const feeder = preBySeedPosition.get(num(seedPosition));
+      if (feeder) visit(feeder.match_id);
+    });
+  };
+  visit(rootMatchId);
+  return ids;
+}
+
+function fallbackFaceSideIds(matches, side) {
+  const ids = new Set();
+  mainFaceRounds(matches).forEach((round) => {
+    const rows = sortFaceRows((matches || []).filter((m) => matchRoundKey(m) === round));
+    const half = Math.ceil(rows.length / 2);
+    const sideRows = side === 'left' ? rows.slice(0, half) : rows.slice(half);
+    sideRows.forEach((match) => ids.add(match.match_id));
+  });
+  return ids;
+}
+
+function faceBranchIds(matches, final, side) {
+  const rootId = side === 'left' ? final?.source_match1_id : final?.source_match2_id;
+  const ids = rootId ? collectFaceBranchIds(matches, rootId) : fallbackFaceSideIds(matches, side);
+  if (ids.size) return ids;
+  return fallbackFaceSideIds(matches, side);
+}
+
+function faceCardHeight(round) {
+  return round === 'R0' ? 244 : 276;
+}
+
+function computeFaceGlobalTops(matches) {
+  const cardHeight = 276;
+  const rowGap = 48;
+  const slot = cardHeight + rowGap;
+  const rounds = mainFaceRounds(matches).filter((round) => round !== 'R0');
+  const firstMainRound = rounds[0] || '';
+  const topById = new Map();
+  const rowsByRound = new Map();
+
+  rounds.forEach((round, visualIndex) => {
+    const rows = sortFaceRows((matches || []).filter((m) => matchRoundKey(m) === round));
+    rowsByRound.set(round, rows);
+    const block = Math.pow(2, visualIndex);
+    rows.forEach((match, index) => {
+      topById.set(match.match_id, ((block - 1) * slot) / 2 + index * block * slot);
+    });
+  });
+
+  const firstRows = rowsByRound.get(firstMainRound) || [];
+  (matches || []).filter((match) => matchRoundKey(match) === 'R0').forEach((match, fallbackIndex) => {
+    const targetPosition = num(match.winner_takes_seed_position, 0);
+    const target = firstRows.find((candidate) => num(candidate.seed1_position, 0) === targetPosition || num(candidate.seed2_position, 0) === targetPosition);
+    topById.set(match.match_id, target ? topById.get(target.match_id) : fallbackIndex * slot);
+  });
+
+  return { topById, rounds, slot };
+}
+
+function getExplicitSourceIds(match, positionsById) {
+  return [match.source_match1_id, match.source_match2_id].filter((id) => id && positionsById.has(id));
+}
+
+function getSeedFeederIds(match, matches, positionsById) {
+  const feeders = [];
+  [match.seed1_position, match.seed2_position].forEach((seedPosition) => {
+    if (!seedPosition) return;
+    const feeder = (matches || []).find((candidate) => candidate.phase === 'PRE_ELIMINATION' && num(candidate.winner_takes_seed_position, 0) === num(seedPosition, 0));
+    if (feeder && positionsById.has(feeder.match_id)) feeders.push(feeder.match_id);
+  });
+  return feeders;
+}
+
+function getFallbackSourceIds(match, layout, positionsById) {
+  const currentRoundIndex = layout.roundsAsc.findIndex((round) => round === matchRoundKey(match));
+  if (currentRoundIndex <= 0) return [];
+  const previousRound = layout.roundsAsc[currentRoundIndex - 1];
+  if (!previousRound || previousRound === 'R0') return [];
+  const prevRows = layout.rowsByRound.get(previousRound) || [];
+  const currentRows = layout.rowsByRound.get(matchRoundKey(match)) || [];
+  const currentIndex = currentRows.findIndex((row) => row.match_id === match.match_id);
+  if (currentIndex < 0) return [];
+  return prevRows.slice(currentIndex * 2, currentIndex * 2 + 2).map((row) => row.match_id).filter((id) => positionsById.has(id));
+}
+
+function buildFaceBranchLayout(matches, final, side) {
+  const branchIds = faceBranchIds(matches, final, side);
+  const { topById } = computeFaceGlobalTops(matches);
+  const roundsAsc = mainFaceRounds(matches).filter((round) => (matches || []).some((match) => branchIds.has(match.match_id) && matchRoundKey(match) === round));
+  const displayRounds = side === 'right' ? [...roundsAsc].reverse() : roundsAsc;
+  const rowsByRound = new Map();
+  const rawTops = [];
+
+  roundsAsc.forEach((round) => {
+    const rows = sortFaceRows((matches || []).filter((match) => branchIds.has(match.match_id) && matchRoundKey(match) === round));
+    rowsByRound.set(round, rows);
+    rows.forEach((match) => rawTops.push(topById.get(match.match_id) || 0));
+  });
+
+  const minTop = rawTops.length ? Math.min(...rawTops) : 0;
+  const topPadding = 56;
+  const columnWidth = 330;
+  const columnGap = 42;
+  const positionsById = new Map();
+  const columns = displayRounds.map((round, columnIndex) => {
+    const rows = rowsByRound.get(round) || [];
+    const x = columnIndex * (columnWidth + columnGap);
+    rows.forEach((match) => {
+      const top = (topById.get(match.match_id) || 0) - minTop + topPadding;
+      positionsById.set(match.match_id, { match, round, x, y: top, width: columnWidth, height: faceCardHeight(round), columnIndex });
+    });
+    return { round, rows, x, width: columnWidth };
+  });
+
+  const connectors = [];
+  const layout = { roundsAsc, rowsByRound };
+  positionsById.forEach((position, matchId) => {
+    const match = position.match;
+    let sources = getExplicitSourceIds(match, positionsById);
+    if (!sources.length) sources = getSeedFeederIds(match, matches, positionsById);
+    if (!sources.length) sources = getFallbackSourceIds(match, layout, positionsById);
+    sources.forEach((sourceId) => {
+      const source = positionsById.get(sourceId);
+      if (!source) return;
+      const fromX = side === 'left' ? source.x + source.width : source.x;
+      const toX = side === 'left' ? position.x : position.x + position.width;
+      const fromY = source.y + source.height / 2;
+      const toY = position.y + position.height / 2;
+      const midX = fromX + (toX - fromX) / 2;
+      connectors.push({ sourceId, targetId: matchId, fromX, fromY, toX, toY, midX });
+    });
+  });
+
+  const maxBottom = Math.max(560, ...Array.from(positionsById.values()).map((position) => position.y + position.height + 20));
+  const width = Math.max(columnWidth, columns.length * columnWidth + Math.max(0, columns.length - 1) * columnGap);
+  return { side, columns, connectors, positionsById, width, height: maxBottom, columnWidth, columnGap };
+}
+
+function FaceConnectorSvg({ layout }) {
+  return E('svg', { className: 'face-connector-svg', width: layout.width, height: layout.height, viewBox: `0 0 ${layout.width} ${layout.height}`, 'aria-hidden': 'true', focusable: 'false' },
+    layout.connectors.map((connector) => E('path', {
+      key: `${connector.sourceId}-${connector.targetId}`,
+      className: 'face-connector-path',
+      d: `M ${connector.fromX} ${connector.fromY} H ${connector.midX} V ${connector.toY} H ${connector.toX}`
+    }))
+  );
+}
+
+function FaceRoundColumn({ round, rows, playerMap, matches, layout }) {
+  return E('div', { className: `face-round-column face-round-key-${String(round).toLowerCase()} face-absolute-column`, style: { left: `${layout.columns.find((column) => column.round === round)?.x || 0}px`, width: `${layout.columnWidth}px`, minHeight: `${layout.height}px` } },
     E('div', { className: 'round-premium-title face-round-title' },
       E('h3', null, shortRound(round).toUpperCase()),
       E('span', null, `${rows.length * 2} jugadores`)
     ),
-    E('div', { className: 'face-round-matches' },
-      rows.map((match) => E(MatchCard, {
-        key: match.match_id,
-        match,
-        playerMap,
-        allMatches: matches,
-        cardHeight: 276
-      }))
+    E('div', { className: 'face-round-matches face-round-matches-absolute' },
+      rows.map((match) => {
+        const position = layout.positionsById.get(match.match_id) || { y: 0 };
+        return E('div', { key: match.match_id, className: 'face-match-position', style: { top: `${position.y}px`, height: `${faceCardHeight(round)}px` } },
+          E(MatchCard, {
+            match,
+            playerMap,
+            allMatches: matches,
+            cardHeight: faceCardHeight(round),
+            roundIndex: round === 'R0' ? 0 : 1,
+            connectorHeight: 0
+          })
+        );
+      })
     )
   );
 }
 
-function FaceToFaceView({ matches, playerMap }) {
-  const rounds = mainFaceRounds(matches);
-  const final = matches.find((m) => matchRoundKey(m) === 'F');
-  const championTop = final?.winner_id ? 318 : 0;
-  const leftRounds = rounds.map((round) => ({ round, rows: sideRoundMatches(matches, round, 'left') })).filter((item) => item.rows.length);
-  const rightRounds = rounds.map((round) => ({ round, rows: sideRoundMatches(matches, round, 'right') })).filter((item) => item.rows.length).reverse();
+function FaceBranch({ layout, playerMap, matches }) {
+  return E('div', { className: `face-branch face-${layout.side}-branch face-tree-branch`, style: { width: `${layout.width}px`, minWidth: `${layout.width}px`, height: `${layout.height}px` } },
+    E(FaceConnectorSvg, { layout }),
+    layout.columns.map(({ round, rows }) => E(FaceRoundColumn, { key: `${layout.side}-${round}`, round, rows, playerMap, matches, layout }))
+  );
+}
 
-  return E('div', { className: 'face-to-face-premium' },
+function FaceToFaceView({ matches, playerMap }) {
+  const final = matches.find((m) => matchRoundKey(m) === 'F');
+  const leftLayout = buildFaceBranchLayout(matches, final, 'left');
+  const rightLayout = buildFaceBranchLayout(matches, final, 'right');
+  const hasR0 = matches.some((m) => matchRoundKey(m) === 'R0');
+  const baseStageHeight = Math.max(leftLayout.height, rightLayout.height, 640);
+  // v5.7: move the final down so it breathes away from semifinals. The offset
+  // is close to two face cards, matching the approved visual feedback.
+  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 1.75) : 0;
+  const stageHeight = baseStageHeight + finalVerticalOffset + (final?.winner_id ? 170 : 0);
+
+  return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
     E('div', { className: 'face-header-note' },
       E('b', null, 'Visualización Face to Face'),
-      E('span', null, 'La mitad superior del bracket alimenta la final desde la izquierda y la mitad inferior desde la derecha.')
+      E('span', null, hasR0 ? 'Incluye R0 y dibuja conexiones reales por fuentes de partida, adaptadas desde la visualización continua.' : 'Dibuja conexiones reales por fuentes de partida, adaptadas desde la visualización continua.')
     ),
-    E('div', { className: 'face-grid face-grid-balanced' },
-      E('div', { className: 'face-branch face-left-branch' },
-        leftRounds.map(({ round, rows }) => E(FaceRoundColumn, { key: `left-${round}`, round, rows, playerMap, matches, side: 'left' }))
-      ),
-      E('div', { className: 'face-center-stage' },
-        final ? E('div', { className: 'face-final-wrap' },
+    E('div', { className: 'face-grid face-grid-balanced face-tree-grid', style: { '--face-stage-height': `${stageHeight}px`, '--face-final-offset': `${finalVerticalOffset}px` } },
+      E(FaceBranch, { layout: leftLayout, playerMap, matches }),
+      E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
+        final ? E('div', { className: 'face-final-wrap face-tree-final-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
           E('div', { className: 'round-premium-title face-round-title' },
             E('h3', null, 'FINAL'),
             E('span', null, '2 jugadores')
           ),
           E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292 }),
-          final.winner_id ? E('div', { className: 'face-champion-node' },
+          final.winner_id ? E('div', { className: 'face-champion-node face-champion-under-final' },
             E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
             E('div', { className: 'trophy' }, '🏆'),
             E('span', null, 'Campeón / Ganador'),
@@ -411,9 +584,7 @@ function FaceToFaceView({ matches, playerMap }) {
           ) : null
         ) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })
       ),
-      E('div', { className: 'face-branch face-right-branch' },
-        rightRounds.map(({ round, rows }) => E(FaceRoundColumn, { key: `right-${round}`, round, rows, playerMap, matches, side: 'right' }))
-      )
+      E(FaceBranch, { layout: rightLayout, playerMap, matches })
     )
   );
 }
@@ -425,6 +596,8 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
   const [scale, setScale] = useState('100');
   const [rollbackReason, setRollbackReason] = useState('Corrección de fase autorizada');
+  const [notice, setNotice] = useState(null);
+  const noticeTimerRef = useRef(null);
   const printAreaRef = useRef(null);
   const playerMap = Object.fromEntries(players.map((p) => [p.player_id, p]));
   const preMatches = matches.filter((m) => m.phase === 'PRE_ELIMINATION').sort((a, b) => (a.bracket_order || 0) - (b.bracket_order || 0));
@@ -434,6 +607,12 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   const activeKoMatches = koMatches.filter((m) => m.match_status !== 'PLANNED');
   const nextRoundButtonLabel = activePreMatches.length && !activeKoMatches.length ? 'Generar bracket principal' : 'Generar siguiente ronda';
 
+  const notify = (message, kind = 'success') => {
+    setNotice({ message, kind });
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), 5500);
+  };
+
   const replaceEliminationMatches = (newMatches) => setMatches([...matches.filter((m) => !['PRE_ELIMINATION', 'KO'].includes(m.phase)), ...newMatches]);
   const generateInitial = () => {
     if (!seeds.length) return alert('Primero clasifique grupos.');
@@ -442,6 +621,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     if (structure.type === 'ERROR') return alert(structure.message);
     replaceEliminationMatches([...structure.preMatches, ...structure.koMatches]);
     audit('BRACKET_STRUCTURE', structure.message);
+    notify(`Estructura de llaves generada correctamente. ${structure.message}`);
   };
   const fillCurrent = () => {
     const target = preMatches.some((m) => !['COMPLETED', 'PLANNED'].includes(m.match_status))
@@ -451,6 +631,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     const completed = autoFillMatches(target, `bracket-${Date.now()}`);
     setMatches(mergeById(matches, completed));
     audit('BRACKET_RANDOM_RESULTS', `Resultados aplicados a ${completed.length} partidas.`);
+    notify(`Resultados aplicados correctamente a ${completed.length} partidas de la ronda activa.`);
   };
   const generateNext = () => {
     const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
@@ -472,6 +653,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       const merged = mergeWithProjectedSchedule(main.matches, matches);
       setMatches([...matches.filter((m) => !(m.phase === 'KO' && m.ko_round === merged[0]?.ko_round && m.match_status === 'PLANNED')), ...merged]);
       audit('BRACKET_MAIN_AFTER_R0', `${roundDisplayName(merged[0]?.ko_round)} generada con jugadores reales después de R0, conservando fecha, hora y mesa proyectadas.`);
+      notify(`${roundDisplayName(merged[0]?.ko_round)} generada correctamente después de R0.`);
       return;
     }
 
@@ -486,6 +668,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       : matches;
     setMatches([...cleaned, ...result.matches]);
     audit('NEXT_KO_ROUND', `${first?.phase === 'PRE_ELIMINATION' ? 'Preclasificación' : roundDisplayName(first?.ko_round)} generada con jugadores reales, conservando fecha, hora y mesa proyectadas.`);
+    notify(`${first?.phase === 'PRE_ELIMINATION' ? 'Preclasificación' : roundDisplayName(first?.ko_round)} generada correctamente.`);
   };
   const rollbackPreviousPhase = () => {
     if (['CLOSED', 'FINALIZED', 'COMPLETED'].includes(championship.status)) {
@@ -507,6 +690,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     });
     setMatches(keep);
     audit('ROLLBACK_PHASE', `Regreso ordenado de ${roundDisplayName(currentRound)} a ${previousRound === 'GROUPS' ? 'Grupos' : roundDisplayName(previousRound)}. Motivo: ${rollbackReason}`);
+    notify(`Regreso de fase realizado correctamente: ${roundDisplayName(currentRound)} → ${previousRound === 'GROUPS' ? 'Grupos' : roundDisplayName(previousRound)}.`, 'warning');
   };
 
   const exportCurrentViewPdf = () => {
@@ -526,7 +710,10 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       pageSize: printPageSize,
       orientation: printOrientation,
       scale: printScale,
-      afterPrint: () => audit('BRACKET_PDF', `PDF generado desde vista ${viewLabel}${continuousPreset ? ' · ' + continuousPreset.label : ''}${view === 'face' ? ' · Horizontal Todo 1 Página' : ''}.`)
+      afterPrint: () => {
+        audit('BRACKET_PDF', `PDF generado desde vista ${viewLabel}${continuousPreset ? ' · ' + continuousPreset.label : ''}${view === 'face' ? ' · Horizontal Todo 1 Página' : ''}.`);
+        notify(`PDF de llaves generado correctamente desde vista ${viewLabel}.`);
+      }
     });
   };
 
@@ -553,7 +740,8 @@ export function BracketModule({ championship, players, matches, setMatches, seed
         ),
         E('div', { className: 'control-chip' }, E('span', null, 'Clasificados'), E('b', null, seeds.length)),
         E('div', { className: 'control-chip' }, E('span', null, 'Partidas KO'), E('b', null, koMatches.length))
-      )
+      ),
+      notice ? E('div', { className: `process-notice process-notice-${notice.kind || 'success'}`, role: 'status' }, notice.message) : null
     ),
     E('section', { className: 'bracket-print-scope', ref: printAreaRef },
       E(PdfDocument, { title: 'Llaves / Bracket', subtitle: `Vista ${view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face'}`, championship, meta: [`Clasificados: ${seeds.length}`, `Partidas: ${allElimination.length}`] },
