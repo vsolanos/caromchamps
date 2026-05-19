@@ -1,8 +1,8 @@
-# CaromChamps v5.7.0
+# CaromChamps v5.8.0
 
 Actualización enfocada en el flujo de campeonatos tipo Ranking, corrección de visualización Face to Face, alineación de banderas en tablas de grupos, mensajes de confirmación en llaves y scroll del menú lateral.
 
-## Cambios principales v5.7.0
+## Cambios principales v5.8.0
 
 - Face to Face: la partida Final se desplaza hacia abajo para separarla visualmente de las semifinales.
 - Face to Face: el card de Campeón/Ganador ahora aparece debajo del card de la Final, con conector vertical.
@@ -10,7 +10,7 @@ Actualización enfocada en el flujo de campeonatos tipo Ranking, corrección de 
 - Ranking: la columna Jugador ahora incluye historial clicable, asociación y bandera del país alineadas horizontal y verticalmente.
 - Ranking: el cálculo ahora incluye solamente jugadores que participaron en campeonatos normales asociados al ranking.
 - Ranking: al crear un campeonato tipo Ranking no se requiere ni conserva selección de jugadores participantes.
-- `package.json` actualizado a versión `5.7.0`.
+- `package.json` actualizado a versión `5.8.0`.
 
 
 ## Cambios principales v5.6.0

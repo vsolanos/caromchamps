@@ -1,3 +1,13 @@
+
+## v5.8.0
+
+- Llaves Face to Face: compactación vertical superior para acercar encabezados de columnas a la geometría de la visualización continua.
+- Llaves Face to Face: conectores centrales visibles entre Semis y Final; card de campeón bajado un poco más debajo de la Final.
+- PDF Face to Face en modo Todo 1 Página: escala ampliada ~20% y mejor aprovechamiento del espacio superior.
+- Ranking: celda de jugador reorganizada con nombre/historial y asociación en bloque izquierdo, bandera alineada a la derecha.
+- Ranking PDF: columnas resumen de campeonatos referenciadas como C1, C2, etc., con detalle por campeonato rotulado del mismo modo.
+- Ranking resumen por campeonato ajustado a PRG, CAR, ENT, AVG y Pos#.
+
 # v5.7.0 - 2026-05-18
 
 - Ajustada la visualización Face to Face para bajar la Final y evitar que se vea pegada a semifinales.

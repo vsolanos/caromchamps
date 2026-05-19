@@ -472,7 +472,7 @@ function buildFaceBranchLayout(matches, final, side) {
   });
 
   const minTop = rawTops.length ? Math.min(...rawTops) : 0;
-  const topPadding = 56;
+  const topPadding = 18;
   const columnWidth = 330;
   const columnGap = 42;
   const positionsById = new Map();
@@ -551,6 +551,28 @@ function FaceBranch({ layout, playerMap, matches }) {
   );
 }
 
+function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalOffset }) {
+  if (!final) return null;
+  const leftSemi = final.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null;
+  const rightSemi = final.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null;
+  if (!leftSemi && !rightSemi) return null;
+  const width = 380;
+  const finalWrapWidth = 360;
+  const finalLeft = Math.round((width - finalWrapWidth) / 2);
+  const finalRight = finalLeft + finalWrapWidth;
+  const titleHeight = 42;
+  const finalCardHeight = 292;
+  const finalY = finalVerticalOffset + titleHeight + Math.round(finalCardHeight / 2);
+  const leftJoinX = Math.max(18, finalLeft - 16);
+  const rightJoinX = Math.min(width - 18, finalRight + 16);
+  const pathLeft = leftSemi ? `M 0 ${leftSemi.y + leftSemi.height / 2} H ${leftJoinX} V ${finalY} H ${finalLeft}` : null;
+  const pathRight = rightSemi ? `M ${width} ${rightSemi.y + rightSemi.height / 2} H ${rightJoinX} V ${finalY} H ${finalRight}` : null;
+  return E('svg', { className: 'face-center-connector-svg', width, height: '100%', viewBox: `0 0 ${width} 1000`, preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' },
+    pathLeft ? E('path', { className: 'face-connector-path face-center-connector-path', d: pathLeft }) : null,
+    pathRight ? E('path', { className: 'face-connector-path face-center-connector-path', d: pathRight }) : null
+  );
+}
+
 function FaceToFaceView({ matches, playerMap }) {
   const final = matches.find((m) => matchRoundKey(m) === 'F');
   const leftLayout = buildFaceBranchLayout(matches, final, 'left');
@@ -560,7 +582,8 @@ function FaceToFaceView({ matches, playerMap }) {
   // v5.7: move the final down so it breathes away from semifinals. The offset
   // is close to two face cards, matching the approved visual feedback.
   const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 1.75) : 0;
-  const stageHeight = baseStageHeight + finalVerticalOffset + (final?.winner_id ? 170 : 0);
+  const championVerticalGap = final?.winner_id ? 210 : 0;
+  const stageHeight = baseStageHeight + finalVerticalOffset + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
     E('div', { className: 'face-header-note' },
@@ -570,6 +593,7 @@ function FaceToFaceView({ matches, playerMap }) {
     E('div', { className: 'face-grid face-grid-balanced face-tree-grid', style: { '--face-stage-height': `${stageHeight}px`, '--face-final-offset': `${finalVerticalOffset}px` } },
       E(FaceBranch, { layout: leftLayout, playerMap, matches }),
       E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
+        E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset }),
         final ? E('div', { className: 'face-final-wrap face-tree-final-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
           E('div', { className: 'round-premium-title face-round-title' },
             E('h3', null, 'FINAL'),

@@ -178,13 +178,23 @@ function RankingPoints({ value }) {
   return E('span', { className: 'ranking-points-red' }, value);
 }
 
+function rankingChampionshipCode(index) {
+  return `C${index + 1}`;
+}
+
+function championshipCodeMap(associated = []) {
+  return Object.fromEntries((associated || []).map((championshipRow, index) => [championshipRow.id, rankingChampionshipCode(index)]));
+}
+
 function RankingPlayerCell({ player }) {
   if (!player) return E('span', { className: 'small' }, 'N/D');
   const association = player.association_code || (player.country_iso && player.country_iso !== 'CR' ? 'INTERNACIONAL' : '-');
-  return E('div', { className: 'ranking-player-identity' },
-    E('span', { className: 'ranking-player-history-name' }, E(PlayerHistoryTrigger, { player })),
-    E('span', { className: 'ranking-player-association' }, association),
-    E(RankingFlag, { code: player.country_iso || 'OTHER' })
+  return E('div', { className: 'ranking-player-identity ranking-player-identity-grid' },
+    E('div', { className: 'ranking-player-textblock' },
+      E('span', { className: 'ranking-player-history-name' }, E(PlayerHistoryTrigger, { player })),
+      E('span', { className: 'ranking-player-association' }, association)
+    ),
+    E('div', { className: 'ranking-player-flag-slot' }, E(RankingFlag, { code: player.country_iso || 'OTHER' }))
   );
 }
 
@@ -198,17 +208,26 @@ function rankingMetricSummary(metric) {
   );
 }
 
+function rankingMetricCompact(metric) {
+  if (!metric) return E('span', { className: 'small' }, '-');
+  return E('div', { className: 'ranking-points-cell ranking-metric-cell ranking-metric-compact' },
+    E('div', null, E('b', null, 'PRG '), E(RankingPoints, { value: metric.prg })),
+    E('div', { className: 'small' }, `CAR ${metric.car} · ENT ${metric.ent}`),
+    E('div', { className: 'small' }, `AVG ${fmtAvg(metric.avg)} · Pos# ${metric.position || '-'}`)
+  );
+}
+
 function pointsByChampionshipCell(row, championshipRow) {
   const detail = row.details.find((item) => item.championshipId === championshipRow.id);
   if (!detail) return E('span', { className: 'small' }, '-');
-  return rankingMetricSummary(detail.metric);
+  return rankingMetricCompact(detail.metric);
 }
 
-function RankingMainTable({ rows, associated }) {
+function RankingMainTable({ rows, associated, codeByChampionshipId }) {
   return E('div', { className: 'table-wrap ranking-matrix-wrap' }, E('table', { className: 'ranking-table ranking-matrix-table' },
     E('thead', null, E('tr', null,
       ['POS', 'Jugador', 'Camp.', 'PRG', 'PJ', 'PG', 'PP', 'PE', 'CAR', 'ENT', 'AVG', 'Mejor Pos.'].map((h) => E('th', { key: h }, h)),
-      associated.map((championshipRow) => E('th', { key: championshipRow.id }, championshipRow.name || championshipRow.championship?.name || 'Campeonato'))
+      associated.map((championshipRow) => E('th', { key: championshipRow.id }, codeByChampionshipId?.[championshipRow.id] || championshipRow.name || championshipRow.championship?.name || 'Campeonato'))
     )),
     E('tbody', null, rows.map((row) => E('tr', { key: row.player.player_id },
       E('td', null, row.ranking_position),
@@ -228,9 +247,9 @@ function RankingMainTable({ rows, associated }) {
   ));
 }
 
-function ChampionshipDetailTables({ championshipRankings }) {
+function ChampionshipDetailTables({ championshipRankings, codeByChampionshipId }) {
   return E('div', { className: 'grid ranking-detail-grid', style: { marginTop: 14 } }, championshipRankings.map(({ championshipRow, champ, ranking }) => E('div', { key: championshipRow.id, className: 'round-card ranking-championship-detail' },
-    E('h3', null, champ.name || championshipRow.name),
+    E('h3', null, `${codeByChampionshipId?.[championshipRow.id] || 'C?'} · ${champ.name || championshipRow.name}`),
     E('p', { className: 'small' }, `${formatDateEs(champ.start_date)} / ${formatDateEs(champ.end_date)} · ${ranking.length} jugadores`),
     ranking.length ? E('div', { className: 'table-wrap' }, E('table', { className: 'ranking-detail-table' },
       E('thead', null, E('tr', null, ['Pos', 'Jugador', 'Estado', 'PRG', 'PJ', 'PG', 'PP', 'PE', 'CAR', 'ENT', 'AVG'].map((h) => E('th', { key: h }, h)))),
@@ -260,6 +279,7 @@ export function RankingModule({ championship, championships, players = [] }) {
     ? championship
     : rankingChampionships.find((row) => row.id === championship.ranking_championship_id || row.championship?.championship_id === championship.ranking_championship_id)?.championship;
   const { rows, associated, championshipRankings } = rankingRows(activeRanking, championships, players);
+  const codeByChampionshipId = championshipCodeMap(associated);
 
   const exportRankingPdf = () => {
     if (!rows.length) return alert('No hay resultados de ranking para exportar.');
@@ -293,10 +313,10 @@ export function RankingModule({ championship, championships, players = [] }) {
     ),
     E('section', { className: 'ranking-print-scope' },
       E(PdfDocument, { title: 'Tabla de posiciones Ranking', subtitle: activeRanking.name, championship: activeRanking, meta: [`Campeonatos asociados: ${associated.length}`, `Jugadores: ${rows.length}`] },
-        rows.length ? E(Card, null, E(RankingMainTable, { rows, associated })) : E(EmptyState, { title: 'Sin resultados de ranking', message: 'Asocie campeonatos normales a este ranking y finalícelos para acumular puntuaciones.' }),
+        rows.length ? E(Card, null, E(RankingMainTable, { rows, associated, codeByChampionshipId })) : E(EmptyState, { title: 'Sin resultados de ranking', message: 'Asocie campeonatos normales a este ranking y finalícelos para acumular puntuaciones.' }),
         championshipRankings.length ? E(Card, { className: 'ranking-detail-print-card' },
           E(SectionTitle, { title: 'Detalle por campeonato jugado', subtitle: 'PRG, PJ, PG, PP, PE, CAR, ENT y AVG por campeonato normal asociado.' }),
-          E(ChampionshipDetailTables, { championshipRankings })
+          E(ChampionshipDetailTables, { championshipRankings, codeByChampionshipId })
         ) : null
       )
     )

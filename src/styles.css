@@ -3344,7 +3344,7 @@ body.printing-pdf .num-cell { color: #1d4ed8 !important; background: #dbeafe !im
   align-items: center;
   color: #bae6fd;
   font-size: 13px;
-  margin-bottom: 12px;
+  margin: 0 0 6px;
 }
 .theme-light .face-header-note { color: #1E3A8A; }
 .face-grid-balanced {
@@ -3373,7 +3373,7 @@ body.printing-pdf .num-cell { color: #1d4ed8 !important; background: #dbeafe !im
   gap: 26px;
   align-content: start;
 }
-.face-round-title { margin-bottom: 4px; }
+.face-round-title { margin: 0 0 2px !important; }
 .face-center-stage {
   display: flex;
   align-items: center;
@@ -3890,7 +3890,7 @@ body.printing-groups .aligned-player-submeta {
   left: auto !important;
   top: auto !important;
   transform: none !important;
-  margin: 22px auto 0 !important;
+  margin: 34px auto 0 !important;
   min-width: 240px !important;
   width: min(280px, 100%) !important;
   z-index: 5 !important;
@@ -3953,7 +3953,7 @@ body.printing-groups .aligned-player-submeta {
 
 @media print {
   body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium {
-    zoom: var(--pdf-scale, .30) !important;
+    zoom: var(--pdf-scale, .36) !important;
     min-width: max-content !important;
     padding: 0 !important;
   }
@@ -3973,7 +3973,7 @@ body.printing-groups .aligned-player-submeta {
     min-height: 100px !important;
   }
   body.printing-bracket-face.pdf-fit-one-page .bracket-print-scope {
-    padding-top: 20mm !important;
+    padding-top: 17mm !important;
   }
 
   body.printing-ranking .ranking-player-identity {
@@ -3998,5 +3998,105 @@ body.printing-groups .aligned-player-submeta {
   body.printing-ranking .ranking-player-name {
     min-width: 230px !important;
     text-align: left !important;
+  }
+}
+
+/* v5.8 · Face to Face top compaction, center connectors and ranking compact PDF references. */
+.face-tree-center {
+  position: relative !important;
+  overflow: visible !important;
+}
+.face-center-connector-svg {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+.face-center-connector-path {
+  stroke: rgba(250, 204, 21, .92) !important;
+  stroke-width: 2.35 !important;
+  fill: none !important;
+  vector-effect: non-scaling-stroke !important;
+}
+.face-tree-branch .round-premium-title,
+.face-tree-final-wrap .round-premium-title {
+  margin-top: 0 !important;
+}
+.face-round-matches-absolute {
+  top: 34px !important;
+}
+.face-tree-final-wrap .round-premium-title {
+  margin-bottom: 6px !important;
+}
+
+.ranking-player-identity-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center !important;
+  column-gap: 8px;
+  white-space: normal !important;
+}
+.ranking-player-textblock {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.ranking-player-flag-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  min-width: 30px;
+}
+.ranking-player-history-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ranking-player-association {
+  justify-self: start;
+}
+.ranking-metric-compact {
+  min-width: 112px !important;
+}
+.ranking-metric-compact .small {
+  white-space: nowrap;
+}
+
+@media print {
+  body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium {
+    zoom: var(--pdf-scale, .36) !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-grid {
+    gap: 12px !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-branch .round-premium-title,
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-final-wrap .round-premium-title {
+    padding-top: 2px !important;
+    padding-bottom: 3px !important;
+    margin: 0 0 2px !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-round-matches-absolute {
+    top: 30px !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-final-wrap .face-champion-node {
+    margin-top: 24px !important;
+  }
+  body.printing-ranking .ranking-player-identity-grid {
+    grid-template-columns: minmax(0, 1fr) 24px !important;
+    column-gap: 5px !important;
+    align-items: center !important;
+  }
+  body.printing-ranking .ranking-player-textblock {
+    gap: 2px !important;
+  }
+  body.printing-ranking .ranking-player-flag-slot {
+    width: 24px !important;
+    min-width: 24px !important;
+  }
+  body.printing-ranking .ranking-player-association {
+    justify-self: start !important;
   }
 }
