@@ -270,6 +270,56 @@ function ChampionshipDetailTables({ championshipRankings, codeByChampionshipId }
   )));
 }
 
+
+function RankingTop10Table({ rows }) {
+  const top = (rows || []).slice(0, 10);
+  return E(Card, { className: 'ranking-dashboard-card ranking-top10-card' },
+    E('h2', null, 'Top 10 jugadores del ranking'),
+    top.length ? E('div', { className: 'table-wrap' }, E('table', { className: 'ranking-table ranking-top10-table' },
+      E('thead', null, E('tr', null, ['Pos', 'Jugador', 'PRG', 'PJ', 'PG', 'PP', 'PE', 'CAR', 'ENT', 'AVG', 'Mejor Pos#'].map((h) => E('th', { key: h }, h)))),
+      E('tbody', null, top.map((row) => E('tr', { key: row.player.player_id },
+        E('td', null, row.ranking_position),
+        E('td', { className: 'ranking-player-name' }, E(RankingPlayerCell, { player: row.player })),
+        E('td', null, E(RankingPoints, { value: row.prg })),
+        E('td', null, row.pj), E('td', null, row.pg), E('td', null, row.pp), E('td', null, row.pe),
+        E('td', null, row.car), E('td', null, row.ent), E('td', null, fmtAvg(row.avg)),
+        E('td', null, row.bestPosition === 999 ? '-' : `#${row.bestPosition}`)
+      )))
+    )) : E('p', { className: 'small' }, 'Sin jugadores con puntos ranking.'));
+}
+
+function RankingMiniBarChart({ title, data, valueFormatter = (v) => String(v) }) {
+  const rows = (data || []).slice(0, 10);
+  const max = Math.max(...rows.map((d) => Number(d.value || 0)), 1);
+  return E(Card, { className: 'ranking-dashboard-card ranking-mini-bar-card' },
+    E('h2', null, title),
+    rows.length ? E('div', { className: 'ranking-mini-bars' }, rows.map((row) => E('div', { key: row.label, className: 'ranking-mini-bar-row' },
+      E('span', { title: row.fullLabel || row.label }, row.label),
+      E('div', { className: 'ranking-mini-bar-track' }, E('i', { style: { width: `${Math.max(4, (Number(row.value || 0) / max) * 100)}%` } })),
+      E('b', null, valueFormatter(row.value))
+    ))) : E('p', { className: 'small' }, 'Sin datos disponibles.'));
+}
+
+function RankingDashboard({ rows, championshipRankings }) {
+  const participantsByChampionship = (championshipRankings || []).map(({ championshipRow, champ, ranking }) => ({
+    label: champ.name || championshipRow.name || championshipRow.id,
+    fullLabel: champ.name || championshipRow.name || championshipRow.id,
+    value: ranking.length
+  }));
+  const avgByChampionship = (championshipRankings || []).map(({ championshipRow, champ, ranking }) => {
+    const car = ranking.reduce((sum, item) => sum + Number(item.ranking_metric?.car || 0), 0);
+    const ent = ranking.reduce((sum, item) => sum + Number(item.ranking_metric?.ent || 0), 0);
+    return { label: champ.name || championshipRow.name || championshipRow.id, fullLabel: champ.name || championshipRow.name || championshipRow.id, value: ent > 0 ? car / ent : 0 };
+  });
+  return E('div', { className: 'grid ranking-dashboard-panel' },
+    E(RankingTop10Table, { rows }),
+    E('div', { className: 'grid grid-2' },
+      E(RankingMiniBarChart, { title: 'Participantes por campeonato asociado al ranking', data: participantsByChampionship }),
+      E(RankingMiniBarChart, { title: 'AVG general por campeonato asociado al ranking', data: avgByChampionship, valueFormatter: (v) => fmtAvg(v) })
+    )
+  );
+}
+
 export function RankingModule({ championship, championships, players = [] }) {
   const [pageSize, setPageSize] = useState(championship.global_settings?.pdf_default_page_size || 'A4');
   const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
@@ -311,6 +361,7 @@ export function RankingModule({ championship, championships, players = [] }) {
         E('div', { className: 'round-card' }, E('b', null, 'Fechas'), E('p', null, `${formatDateEs(activeRanking.start_date)} / ${formatDateEs(activeRanking.end_date)}`))
       )
     ),
+    E(RankingDashboard, { rows, championshipRankings }),
     E('section', { className: 'ranking-print-scope' },
       E(PdfDocument, { title: 'Tabla de posiciones Ranking', subtitle: activeRanking.name, championship: activeRanking, meta: [`Campeonatos asociados: ${associated.length}`, `Jugadores: ${rows.length}`] },
         rows.length ? E(Card, null, E(RankingMainTable, { rows, associated, codeByChampionshipId })) : E(EmptyState, { title: 'Sin resultados de ranking', message: 'Asocie campeonatos normales a este ranking y finalícelos para acumular puntuaciones.' }),

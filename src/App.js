@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import appPackage from '../package.json';
-import { E, Card, Button, Badge, Stat } from './components/ui.js';
+import { E, Card, Button, Badge, Stat, SectionTitle, EmptyState } from './components/ui.js';
 import { PlayerHistoryModal } from './components/PlayerHistory.js';
 import { AuthGate } from './components/AuthGate.js';
 import { SharedChampionshipView } from './components/SharedView.js';
 import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
 import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
-import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg } from './lib/tournament.js';
+import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
 import { PlayersModule } from './modules/Players.js';
 import { SetupModule } from './modules/Setup.js';
@@ -42,7 +42,7 @@ function sharedTokenFromLocation() {
 }
 
 const RANKING_BLOCKED_TABS = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
-const UX_MODE_KEY = 'caromchamps::ux_mode::v5_9';
+const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
 
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
@@ -58,6 +58,31 @@ const GUIDED_NAV_GROUPS = [
   { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['config', 'profile', 'admin', 'officials', 'audit'] }
 ];
 
+const PRO_PRIMARY_TABS = [
+  ['grand', 'Grand Dashboard', '◈'],
+  ['championships', 'Campeonatos', '🏆'],
+  ['rankingHub', 'Ranking', '★']
+];
+
+const PRO_ADMIN_TABS = [
+  ['players', 'Jugadores', '👤'],
+  ['config', 'Configuración', '⚙'],
+  ['profile', 'Perfil', '☻'],
+  ['admin', 'Mantenimiento', '🛠'],
+  ['audit', 'Auditoría', '◎']
+];
+
+const PRO_WORKSPACE_TABS = [
+  ['dashboard', 'Dashboard', '⌂'],
+  ['setup', 'Campeonato', '⚙'],
+  ['groups', 'Grupos', '▦'],
+  ['schedule', 'Calendario', '📅'],
+  ['matches', 'Partidas', '●'],
+  ['ko', 'Llaves', '⑂'],
+  ['close', 'Cierre', '✓']
+];
+const PRO_WORKSPACE_TAB_IDS = new Set(PRO_WORKSPACE_TABS.map(([id]) => id));
+
 function getTabMeta(id) {
   const found = NAV_TABS.find(([tabId]) => tabId === id);
   return found || [id, id, '•'];
@@ -68,12 +93,59 @@ function visibleTabsForChampionship(championship) {
   return isRanking ? NAV_TABS.filter(([id]) => !RANKING_BLOCKED_TABS.has(id)) : NAV_TABS;
 }
 
+function ModeButtons({ uxMode, setUxMode, compact = false }) {
+  const modes = [
+    ['pro', 'Interface ProV', 'Nueva navegación por tabs'],
+    ['guided', 'Interface IA', 'UX guiada v5.9'],
+    ['classic', 'Interface Clásica', 'Base v5.8 y anteriores']
+  ];
+  return E('div', { className: `mode-switcher ${compact ? 'compact' : ''}` }, modes.map(([id, label, hint]) => E('button', {
+    key: id,
+    type: 'button',
+    className: `mode-switch ${uxMode === id ? 'active' : ''}`,
+    onClick: () => setUxMode(id),
+    title: hint
+  }, E('span', null, compact ? label.replace('Interface ', '') : label), compact ? null : E('small', null, hint))));
+}
+
 function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, setUxMode }) {
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
   const tabs = visibleTabsForChampionship(championship);
   const visibleIds = new Set(tabs.map(([id]) => id));
   const navigate = (id) => setTab(id);
   const isGuided = uxMode === 'guided';
+  const isPro = uxMode === 'pro';
+
+  if (isPro) {
+    const adminTabs = PRO_ADMIN_TABS.filter(([id]) => id !== 'officials');
+    return E('header', { className: `header guided-header pro-header ${collapsed ? 'collapsed' : ''}` },
+      E('div', { className: 'brand-block guided-brand pro-brand' },
+        E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
+        E('div', { className: 'brand-copy' },
+          E('div', { className: 'brand-title' }, 'CaromChamps'),
+          E('div', { className: 'brand-subtitle' }, 'Interface ProV'),
+          E('div', { className: 'brand-secondary' }, E('img', { src: '/assets/fecobi-logo.jpg', alt: 'FECOBI' }), E('span', null, 'Grand Dashboard'))
+        )
+      ),
+      E('div', { className: 'menu-toolbar' },
+        E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer')
+      ),
+      E('nav', { className: 'tabs guided-tabs pro-tabs', 'aria-label': 'Navegación Interface ProV' },
+        E('section', { className: 'guided-nav-group pro-nav-group active' },
+          E('div', { className: 'guided-nav-group-title' }, E('b', null, 'Inicio'), E('span', null, 'Gestión principal')),
+          PRO_PRIMARY_TABS.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))
+        ),
+        E('section', { className: 'guided-nav-group pro-nav-group' },
+          E('div', { className: 'guided-nav-group-title' }, E('b', null, 'Administración'), E('span', null, 'Soporte y control')),
+          adminTabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))
+        )
+      ),
+      E('div', { className: 'side-profile-actions pro-side-actions' },
+        E(Button, { onClick: () => navigate('profile'), kind: tab === 'profile' ? 'primary' : 'soft', title: 'Ajustes de perfil' }, collapsed ? '☻' : 'Perfil'),
+        E(Button, { onClick: auth?.signOut, kind: 'danger', title: 'Cerrar sesión' }, collapsed ? '⏻' : 'Cerrar sesión')
+      )
+    );
+  }
 
   if (isGuided) {
     return E('header', { className: `header guided-header ${collapsed ? 'collapsed' : ''}` },
@@ -81,13 +153,14 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
         E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
         E('div', { className: 'brand-copy' },
           E('div', { className: 'brand-title' }, 'CaromChamps'),
-          E('div', { className: 'brand-subtitle' }, isRankingChampionship ? 'Centro de Ranking' : 'Centro de Operación'),
-          E('div', { className: 'brand-secondary' }, E('img', { src: '/assets/fecobi-logo.jpg', alt: 'FECOBI' }), E('span', null, 'UX guiada v5.9'))
+          E('div', { className: 'brand-subtitle' }, isRankingChampionship ? 'Centro de Ranking' : 'Interface IA'),
+          E('div', { className: 'brand-secondary' }, E('img', { src: '/assets/fecobi-logo.jpg', alt: 'FECOBI' }), E('span', null, 'UX guiada'))
         )
       ),
       E('div', { className: 'menu-toolbar' },
         E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer'),
-        E(Button, { onClick: () => setUxMode('classic'), kind: 'soft', title: 'Volver temporalmente a la interface anterior' }, collapsed ? '↩' : 'Interface clásica')
+        E(Button, { onClick: () => setUxMode('pro'), kind: 'primary', title: 'Usar Interface ProV' }, collapsed ? '◈' : 'Interface ProV'),
+        E(Button, { onClick: () => setUxMode('classic'), kind: 'soft', title: 'Volver temporalmente a la interface clásica' }, collapsed ? '↩' : 'Interface Clásica')
       ),
       E('nav', { className: 'tabs guided-tabs', 'aria-label': 'Navegación por flujo de trabajo' },
         GUIDED_NAV_GROUPS.map((group) => {
@@ -115,13 +188,14 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
       E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
       E('div', { className: 'brand-copy' },
         E('div', { className: 'brand-title' }, 'CaromChamps'),
-        E('div', { className: 'brand-subtitle' }, 'Control de Campeonatos'),
+        E('div', { className: 'brand-subtitle' }, 'Interface Clásica'),
         E('div', { className: 'brand-secondary' }, E('img', { src: '/assets/fecobi-logo.jpg', alt: 'FECOBI' }), E('span', null, 'FECOBI / ASOBIGRIE'))
       )
     ),
     E('div', { className: 'menu-toolbar' },
       E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer'),
-      E(Button, { onClick: () => setUxMode('guided'), kind: 'soft', title: 'Probar nueva interface guiada' }, collapsed ? '✨' : 'Nueva interface')
+      E(Button, { onClick: () => setUxMode('pro'), kind: 'primary', title: 'Usar Interface ProV' }, collapsed ? '◈' : 'Interface ProV'),
+      E(Button, { onClick: () => setUxMode('guided'), kind: 'soft', title: 'Usar Interface IA' }, collapsed ? '✨' : 'Interface IA')
     ),
     E('nav', { className: 'tabs' }, tabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))),
     E('div', { className: 'side-profile-actions' },
@@ -132,23 +206,21 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
 }
 
 function TopBar({ championship, auth, setTab, uxMode, setUxMode }) {
-  const isGuided = uxMode === 'guided';
-  return E('div', { className: `topbar ${isGuided ? 'guided-topbar' : ''}` },
+  const modeName = uxMode === 'pro' ? 'Interface ProV' : uxMode === 'guided' ? 'Interface IA' : 'Interface Clásica';
+  return E('div', { className: `topbar ${uxMode === 'guided' ? 'guided-topbar' : ''} ${uxMode === 'pro' ? 'pro-topbar' : ''}` },
     E('div', null,
-      E('h1', { className: 'header-title' }, championship.name),
+      E('h1', { className: 'header-title' }, uxMode === 'pro' && championship?.name ? championship.name : championship.name),
       E('div', { className: 'header-meta' },
         E(Badge, { kind: 'info' }, championship.status),
         E(Badge, null, championship.play_mode),
         E(Badge, { kind: 'success' }, championship.division_filter),
         E(Badge, { kind: (championship.championship_type || 'NORMAL') === 'RANKING' ? 'warning' : 'neutral' }, championship.championship_type || 'NORMAL'),
+        E(Badge, { kind: uxMode === 'pro' ? 'success' : uxMode === 'guided' ? 'info' : 'neutral' }, modeName),
         E(Badge, { kind: 'neutral' }, championship.championship_id)
       )
     ),
     E('div', { className: 'topbar-user' },
-      E('button', { type: 'button', className: `ux-switch ${isGuided ? 'guided' : 'classic'}`, onClick: () => setUxMode(isGuided ? 'classic' : 'guided'), title: isGuided ? 'Usar interface anterior' : 'Probar interface guiada' },
-        E('span', null, isGuided ? '✨ UX guiada' : '↩ Clásica'),
-        E('small', null, isGuided ? 'Cambiar a clásica' : 'Cambiar a nueva')
-      ),
+      E(ModeButtons, { uxMode, setUxMode, compact: true }),
       E('span', { className: 'notification-pill' }, '3'),
       E('div', { className: 'avatar placeholder' }, (auth?.profile?.full_name || auth?.user?.email || 'CC').slice(0, 2).toUpperCase()),
       E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${auth?.profile?.role || 'ORGANIZER'} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
@@ -269,7 +341,7 @@ function championshipStage(championship, groups, matches, seeds) {
   if (seeds.length) return 'GROUPS_CLOSED';
   if (groups.length && matches.length && completed < matches.length) return 'GROUPS_IN_PROGRESS';
   if (groups.length && matches.length) return 'GROUPS_READY';
-  if (players.length) return 'CONFIGURATION';
+  if (championship) return 'CONFIGURATION';
   return 'DRAFT';
 }
 
@@ -464,6 +536,302 @@ function UxContextPanel({ championship, championships, tab, setTab }) {
   );
 }
 
+
+function appNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function championshipTypeOf(row) {
+  return row?.championship?.championship_type || row?.championship_type || 'NORMAL';
+}
+
+function normalChampionshipRows(championships) {
+  return (championships || []).filter((row) => championshipTypeOf(row) !== 'RANKING');
+}
+
+function rankingChampionshipRows(championships) {
+  return (championships || []).filter((row) => championshipTypeOf(row) === 'RANKING');
+}
+
+function completedMatchesOf(row) {
+  return (row?.matches || []).filter((m) => m.match_status === 'COMPLETED');
+}
+
+function averageFromMatches(matches) {
+  let caroms = 0;
+  let innings = 0;
+  (matches || []).filter((m) => m.match_status === 'COMPLETED').forEach((m) => {
+    const matchInnings = appNumber(m.innings || m.total_innings || m.entries, 0);
+    const s1 = matchPlayerStats(m, 1);
+    const s2 = matchPlayerStats(m, 2);
+    caroms += appNumber(s1.caroms, 0) + appNumber(s2.caroms, 0);
+    innings += matchInnings > 0 ? matchInnings * 2 : appNumber(s1.innings, 0) + appNumber(s2.innings, 0);
+  });
+  return innings > 0 ? caroms / innings : 0;
+}
+
+function phaseAverageSeries(matches) {
+  const order = ['GROUPS', 'PRE_ELIMINATION', 'KO'];
+  const label = { GROUPS: 'Grupos', PRE_ELIMINATION: 'R0', KO: 'KO' };
+  let cumulativeCaroms = 0;
+  let cumulativeInnings = 0;
+  return order.map((phase) => {
+    (matches || []).filter((m) => m.phase === phase && m.match_status === 'COMPLETED').forEach((m) => {
+      const matchInnings = appNumber(m.innings || m.total_innings || m.entries, 0);
+      const s1 = matchPlayerStats(m, 1);
+      const s2 = matchPlayerStats(m, 2);
+      cumulativeCaroms += appNumber(s1.caroms, 0) + appNumber(s2.caroms, 0);
+      cumulativeInnings += matchInnings > 0 ? matchInnings * 2 : appNumber(s1.innings, 0) + appNumber(s2.innings, 0);
+    });
+    return { label: label[phase], value: cumulativeInnings > 0 ? cumulativeCaroms / cumulativeInnings : 0 };
+  });
+}
+
+function MiniLineChart({ data, title, valueFormatter = (v) => String(v) }) {
+  const rows = data?.length ? data : [{ label: '-', value: 0 }];
+  const width = 620;
+  const height = 220;
+  const pad = 28;
+  const max = Math.max(...rows.map((d) => appNumber(d.value, 0)), 0.1);
+  const min = Math.min(...rows.map((d) => appNumber(d.value, 0)), 0);
+  const spread = Math.max(max - min, 0.1);
+  const points = rows.map((d, i) => {
+    const x = pad + (rows.length === 1 ? 0 : i * ((width - pad * 2) / (rows.length - 1)));
+    const y = height - pad - ((appNumber(d.value, 0) - min) / spread) * (height - pad * 2);
+    return { ...d, x, y };
+  });
+  return E(Card, { className: 'pro-chart-card pro-line-chart' },
+    E('h2', null, title),
+    E('svg', { viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': title },
+      E('polyline', { points: points.map((p) => `${p.x},${p.y}`).join(' '), fill: 'none', stroke: 'currentColor', strokeWidth: 4, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+      points.map((p) => E('g', { key: p.label },
+        E('circle', { cx: p.x, cy: p.y, r: 5 }),
+        E('text', { x: p.x, y: height - 6, textAnchor: 'middle' }, p.label),
+        E('text', { x: p.x, y: Math.max(14, p.y - 12), textAnchor: 'middle', className: 'chart-value' }, valueFormatter(p.value))
+      ))
+    )
+  );
+}
+
+function MiniBarChart({ data, title, valueFormatter = (v) => String(v) }) {
+  const rows = (data || []).slice(0, 8);
+  const max = Math.max(...rows.map((d) => appNumber(d.value, 0)), 1);
+  return E(Card, { className: 'pro-chart-card pro-bar-chart' },
+    E('h2', null, title),
+    E('div', { className: 'pro-bars' }, rows.length ? rows.map((row) => E('div', { key: row.label, className: 'pro-bar-row' },
+      E('span', { title: row.fullLabel || row.label }, row.label),
+      E('div', { className: 'pro-bar-track' }, E('i', { style: { width: `${Math.max(3, (appNumber(row.value, 0) / max) * 100)}%` } })),
+      E('b', null, valueFormatter(row.value))
+    )) : E('p', { className: 'small' }, 'Sin datos disponibles.'))
+  );
+}
+
+function GrandDashboard({ championships, players }) {
+  const normalRows = normalChampionshipRows(championships);
+  const rankingRows = rankingChampionshipRows(championships);
+  const uniquePlayers = new Set(players.map((p) => p.player_id));
+  const inscriptions = normalRows.reduce((sum, row) => sum + (row.championship?.participant_ids?.length || getEligiblePlayers(row.championship || {}, players).length || 0), 0);
+  const statusCounts = Object.entries((championships || []).reduce((acc, row) => {
+    const status = row.status || row.championship?.status || 'DRAFT';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {})).map(([label, value]) => ({ label, value }));
+  const avgByChampionship = normalRows.map((row, index) => ({ label: `C${index + 1}`, fullLabel: row.name, value: averageFromMatches(row.matches || []) }));
+  const championshipsByPlayers = normalRows.map((row) => ({ label: row.name || row.championship?.name || row.id, fullLabel: row.name || row.championship?.name || row.id, value: row.championship?.participant_ids?.length || getEligiblePlayers(row.championship || {}, players).length || 0 })).sort((a, b) => b.value - a.value);
+  const playerBest = new Map();
+  normalRows.forEach((row) => completedMatchesOf(row).forEach((m) => {
+    [1, 2].forEach((side) => {
+      const stats = matchPlayerStats(m, side);
+      const pid = stats.player_id;
+      if (!pid) return;
+      const innings = appNumber(stats.innings || m.innings, 0);
+      const avg = innings > 0 ? appNumber(stats.caroms, 0) / innings : appNumber(stats.avg, 0);
+      const current = playerBest.get(pid) || { playerId: pid, value: 0 };
+      if (avg > current.value) playerBest.set(pid, { playerId: pid, value: avg });
+    });
+  }));
+  const topPlayers = [...playerBest.values()].sort((a, b) => b.value - a.value).slice(0, 7).map((row) => {
+    const player = players.find((p) => p.player_id === row.playerId);
+    return { label: playerName(player).slice(0, 18), fullLabel: playerName(player), value: row.value };
+  });
+  const totalMatches = normalRows.reduce((sum, row) => sum + (row.matches?.length || 0), 0);
+  const completedMatches = normalRows.reduce((sum, row) => sum + completedMatchesOf(row).length, 0);
+  const globalAvg = averageFromMatches(normalRows.flatMap((row) => row.matches || []));
+  return E('div', { className: 'grid pro-grand-dashboard' },
+    E('section', { className: 'pro-hero' },
+      E('div', null,
+        E('span', { className: 'ux-kicker' }, 'Interface ProV'),
+        E('h1', null, 'Grand Dashboard'),
+        E('p', null, 'Vista ejecutiva acumulada de todos los campeonatos, jugadores, promedios, estados y participación registrada en la plataforma.')
+      ),
+      E(ModeButtons, { uxMode: 'pro', setUxMode: () => {}, compact: false })
+    ),
+    E('div', { className: 'grid grid-6 pro-stat-strip' },
+      E(Stat, { label: 'Campeonatos normales', value: normalRows.length }),
+      E(Stat, { label: 'Campeonatos ranking', value: rankingRows.length }),
+      E(Stat, { label: 'Jugadores únicos', value: uniquePlayers.size }),
+      E(Stat, { label: 'Inscripciones acumuladas', value: inscriptions }),
+      E(Stat, { label: 'Partidas completadas', value: `${completedMatches}/${totalMatches}` }),
+      E(Stat, { label: 'AVG global', value: fmtAvg(globalAvg) })
+    ),
+    E('div', { className: 'grid grid-2' },
+      E(MiniLineChart, { data: avgByChampionship, title: 'AVG general por campeonato', valueFormatter: (v) => fmtAvg(v) }),
+      E(MiniBarChart, { data: statusCounts, title: 'Estados actuales de campeonatos' })
+    ),
+    E('div', { className: 'grid grid-2' },
+      E(MiniBarChart, { data: topPlayers, title: 'Top 7 jugadores por mayor AVG alcanzado', valueFormatter: (v) => fmtAvg(v) }),
+      E(MiniBarChart, { data: championshipsByPlayers, title: 'Campeonatos con más jugadores inscritos' })
+    ),
+    E(Card, { className: 'pro-insight-card' },
+      E('h2', null, 'Lecturas rápidas para Dirección Técnica'),
+      E('div', { className: 'grid grid-4' },
+        E('div', { className: 'round-card' }, E('b', null, 'Actividad'), E('p', null, `${completedMatches} partidas completadas en ${normalRows.length} campeonatos normales.`)),
+        E('div', { className: 'round-card' }, E('b', null, 'Participación'), E('p', null, `${inscriptions} inscripciones acumuladas registradas.`)),
+        E('div', { className: 'round-card' }, E('b', null, 'Rendimiento'), E('p', null, `AVG global acumulado ${fmtAvg(globalAvg)}.`)),
+        E('div', { className: 'round-card' }, E('b', null, 'Ranking'), E('p', null, `${rankingRows.length} campeonatos tipo Ranking disponibles.`))
+      )
+    )
+  );
+}
+
+function ProWorkspaceTabs({ tab, setTab, championship }) {
+  const isRanking = (championship?.championship_type || 'NORMAL') === 'RANKING';
+  const tabs = isRanking ? [['dashboard', 'Dashboard', '⌂'], ['setup', 'Campeonato', '⚙'], ['ranking', 'Ranking', '★']] : PRO_WORKSPACE_TABS;
+  return E(Card, { className: 'pro-workspace-tabs-card pro-workspace-tabs-sticky' },
+    E('div', { className: 'pro-workspace-title' },
+      E('div', null, E('span', { className: 'ux-kicker' }, 'Campeonato activo'), E('h2', null, championship?.name || 'Sin campeonato seleccionado')),
+      E(Badge, { kind: isRanking ? 'warning' : 'info' }, isRanking ? 'RANKING' : 'NORMAL')
+    ),
+    E('div', { className: 'pro-workspace-tabs pro-process-tabs' }, tabs.map(([id, label, icon], index) => E('button', { key: id, type: 'button', className: `${tab === id ? 'active' : ''} ${index < tabs.length - 1 ? 'has-next' : ''}`, onClick: () => setTab(id) }, E('span', { className: 'pro-tab-index' }, index + 1), E('span', { className: 'pro-tab-icon' }, icon), E('b', null, label))))
+  );
+}
+
+function ChampionshipAvgByPhaseChart({ championship, matches }) {
+  if ((championship?.championship_type || 'NORMAL') === 'RANKING') return null;
+  return E('div', { className: 'pro-dashboard-chart-small' }, E(MiniLineChart, { data: phaseAverageSeries(matches), title: 'AVG general acumulado por fase', valueFormatter: (v) => fmtAvg(v) }));
+}
+
+function ProPendingMatchesList({ matches, players }) {
+  const playerMap = Object.fromEntries((players || []).map((p) => [p.player_id, p]));
+  const pending = (matches || []).filter((m) => m.match_status !== 'COMPLETED' && m.match_status !== 'VALIDATED' && m.match_status !== 'LOCKED').slice(0, 18);
+  return E(Card, { className: 'pro-pending-matches-card' },
+    E('div', { className: 'section-title' }, E('h2', null, 'Partidas pendientes de jugar'), E('p', null, 'Lista rápida de partidas sin completar para seguimiento operativo.')),
+    pending.length ? E('div', { className: 'table-wrap' }, E('table', { className: 'pro-pending-table' },
+      E('thead', null, E('tr', null, ['Código', 'Fase', 'Jugador A', 'Jugador B', 'Mesa', 'Fecha/Hora', 'Estado'].map((h) => E('th', { key: h }, h)))),
+      E('tbody', null, pending.map((m) => E('tr', { key: m.match_id },
+        E('td', null, matchCode(m)),
+        E('td', null, matchRoundLabel(m)),
+        E('td', null, playerName(playerMap[m.player1_id])),
+        E('td', null, playerName(playerMap[m.player2_id])),
+        E('td', null, m.table_number || m.table_id || '-'),
+        E('td', null, m.scheduled_at ? formatDateTimeEs(m.scheduled_at) : '-'),
+        E('td', null, matchDisplayStatus(m))
+      )))
+    )) : E('p', { className: 'small' }, 'No hay partidas pendientes.'));
+}
+
+function ProChampionshipDashboard({ championship, players, groups, matches, seeds, championships, setTab }) {
+  return E('div', { className: 'grid pro-championship-dashboard' },
+    E(UxActionCenter, { championship, players, groups, matches, seeds, championships, setTab }),
+    E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }),
+    E(ProPendingMatchesList, { matches, players }),
+    E(ChampionshipAvgByPhaseChart, { championship, matches })
+  );
+}
+
+function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({
+    championship_type: type,
+    name: type === 'RANKING' ? 'Nuevo Ranking Nacional' : 'Nuevo Campeonato Nacional',
+    venue_name: 'Sala Oficial FECOBI',
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: new Date().toISOString().slice(0, 10),
+    division_filter: 'PRIMERA',
+    preferred_group_size: '4',
+    qualifiers_per_group: '2',
+    extra_qualifiers_count: '2',
+    total_qualifiers_f2: '16',
+    ranking_max_championships: '5'
+  });
+  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const steps = type === 'RANKING' ? ['Tipo y nombre', 'Reglas Ranking', 'Confirmación'] : ['Tipo y nombre', 'Fechas y sede', 'Reglas base', 'Confirmación'];
+  const finish = () => onCreate(form);
+  return E(Card, { className: 'pro-wizard-card' },
+    E('div', { className: 'pro-wizard-head' },
+      E('div', null, E('span', { className: 'ux-kicker' }, type === 'RANKING' ? 'Wizard Ranking' : 'Wizard Campeonato'), E('h2', null, 'Crear campeonato guiado')),
+      E(Button, { kind: 'soft', onClick: onCancel }, 'Cerrar')
+    ),
+    E('div', { className: 'ux-stepper pro-wizard-steps' }, steps.map((label, index) => E('button', { key: label, className: `ux-step ${index === step ? 'active' : index < step ? 'done' : ''}`, onClick: () => setStep(index) }, E('span', null, index + 1), E('b', null, label)))),
+    step === 0 ? E('div', { className: 'grid grid-2 pro-form-grid' },
+      E('label', null, 'Nombre', E('input', { value: form.name, onChange: (e) => update('name', e.target.value) })),
+      E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: true, onChange: (e) => update('championship_type', e.target.value) }, E('option', { value: 'NORMAL' }, 'Normal'), E('option', { value: 'RANKING' }, 'Ranking'))),
+      E('label', null, 'División', E('select', { value: form.division_filter, onChange: (e) => update('division_filter', e.target.value) }, ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL', 'NA'].map((value) => E('option', { key: value, value }, value)))),
+      E('label', null, 'Estado inicial', E('input', { value: 'DRAFT', disabled: true }))
+    ) : null,
+    step === 1 && type !== 'RANKING' ? E('div', { className: 'grid grid-2 pro-form-grid' },
+      E('label', null, 'Sede', E('input', { value: form.venue_name, onChange: (e) => update('venue_name', e.target.value) })),
+      E('label', null, 'Fecha inicio', E('input', { type: 'date', value: form.start_date, onChange: (e) => update('start_date', e.target.value) })),
+      E('label', null, 'Fecha final', E('input', { type: 'date', value: form.end_date, onChange: (e) => update('end_date', e.target.value) })),
+      E('label', null, 'Tamaño grupo', E('input', { type: 'number', min: 3, max: 6, value: form.preferred_group_size, onChange: (e) => update('preferred_group_size', e.target.value) }))
+    ) : null,
+    step === 2 && type !== 'RANKING' ? E('div', { className: 'grid grid-4 pro-form-grid' },
+      E('label', null, 'Clasificados por grupo', E('input', { type: 'number', value: form.qualifiers_per_group, onChange: (e) => update('qualifiers_per_group', e.target.value) })),
+      E('label', null, 'Extra clasificados', E('input', { type: 'number', value: form.extra_qualifiers_count, onChange: (e) => update('extra_qualifiers_count', e.target.value) })),
+      E('label', null, 'Total F2', E('input', { type: 'number', value: form.total_qualifiers_f2, onChange: (e) => update('total_qualifiers_f2', e.target.value) })),
+      E('label', null, 'Cierre', E('input', { value: 'CON_CIERRE', disabled: true }))
+    ) : null,
+    step === 1 && type === 'RANKING' ? E('div', { className: 'grid grid-2 pro-form-grid' },
+      E('label', null, 'Máximo campeonatos asociados', E('input', { type: 'number', value: form.ranking_max_championships, onChange: (e) => update('ranking_max_championships', e.target.value) })),
+      E('div', { className: 'round-card' }, E('b', null, 'Jugadores'), E('p', null, 'No se asocian jugadores manualmente. Se tomarán desde campeonatos normales asociados.'))
+    ) : null,
+    step === steps.length - 1 ? E('div', { className: 'pro-wizard-summary' },
+      E('h3', null, 'Resumen'),
+      E('p', null, `${form.name} · ${form.championship_type} · ${form.division_filter}`),
+      E('p', { className: 'small' }, type === 'RANKING' ? 'Al finalizar, el ranking quedará listo para asociar campeonatos normales.' : 'Al finalizar, el campeonato quedará guardado y se abrirá en el tab Dashboard para continuar el proceso.')
+    ) : null,
+    E('div', { className: 'toolbar pro-wizard-actions' },
+      E(Button, { kind: 'soft', disabled: step === 0, onClick: () => setStep(Math.max(0, step - 1)) }, 'Anterior'),
+      step < steps.length - 1 ? E(Button, { kind: 'primary', onClick: () => setStep(Math.min(steps.length - 1, step + 1)) }, 'Siguiente') : E(Button, { kind: 'success', onClick: finish }, 'Guardar campeonato')
+    )
+  );
+}
+
+function ProChampionshipHub({ type, championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) {
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const rows = (type === 'RANKING' ? rankingChampionshipRows(championships) : normalChampionshipRows(championships));
+  return E('div', { className: 'grid pro-hub' },
+    E(Card, null,
+      E(SectionTitle, { title: type === 'RANKING' ? 'Campeonatos tipo Ranking' : 'Campeonatos normales', subtitle: type === 'RANKING' ? 'Solo se muestran rankings. Al abrirlos se consulta su tabla acumulada.' : 'Solo se muestran campeonatos normales. Al abrir uno, se carga su Dashboard operativo.' }),
+      E('div', { className: 'toolbar', style: { marginTop: 14 } },
+        E(Button, { onClick: () => setWizardOpen(true), kind: 'success' }, type === 'RANKING' ? 'Crear ranking guiado' : 'Crear campeonato guiado'),
+        type !== 'RANKING' ? E(Button, { onClick: duplicateChampionship, kind: 'soft' }, 'Duplicar campeonato activo') : null
+      )
+    ),
+    wizardOpen ? E('div', { className: 'pro-wizard-overlay', role: 'dialog', 'aria-modal': 'true' }, E('div', { className: 'pro-wizard-modal' }, E(ChampionshipWizard, { type, championships, onCancel: () => setWizardOpen(false), onCreate: (form) => { createChampionshipFromWizard(form); setWizardOpen(false); } }))) : null,
+    !rows.length ? E(EmptyState, { title: type === 'RANKING' ? 'Sin rankings' : 'Sin campeonatos normales', message: 'Cree el primer registro con el wizard guiado.' }) : E(Card, null,
+      E('div', { className: 'table-wrap' }, E('table', null,
+        E('thead', null, E('tr', null, ['Activo', 'Campeonato', 'Estado', 'Fechas', 'Grupos', 'Partidas', 'Clasificados', 'Acciones'].map((h) => E('th', { key: h }, h)))),
+        E('tbody', null, rows.map((row) => E('tr', { key: row.id, className: row.id === activeId ? 'selected-row' : '' },
+          E('td', null, row.id === activeId ? E(Badge, { kind: 'success' }, 'Activo') : '-'),
+          E('td', null, E('b', null, row.name), E('div', { className: 'small' }, row.id)),
+          E('td', null, E(Badge, { kind: row.status === 'COMPLETED' ? 'success' : row.status === 'FINALIZED' ? 'info' : 'neutral' }, row.status || '-')),
+          E('td', null, `${formatDateEs(row.start_date)} / ${formatDateEs(row.end_date)}`),
+          E('td', null, row.groups?.length || 0),
+          E('td', null, row.matches?.length || 0),
+          E('td', null, row.seeds?.length || 0),
+          E('td', null, E('div', { className: 'toolbar' },
+            E(Button, { onClick: () => loadChampionship(row.id, type === 'RANKING' ? 'ranking' : 'dashboard'), kind: row.id === activeId ? 'primary' : 'soft' }, type === 'RANKING' ? 'Abrir ranking' : 'Abrir'),
+            E(Button, { onClick: () => shareChampionship?.(row.id), kind: 'success' }, 'Compartir'),
+            E(Button, { onClick: () => deleteChampionship(row.id), kind: 'danger', disabled: row.id === activeId }, 'Eliminar')
+          ))
+        )))
+      ))
+    )
+  );
+}
+
 function Dashboard({ championship, players, groups, matches, seeds, championships }) {
   const completed = matches.filter((m) => m.match_status === 'COMPLETED').length;
   const pending = matches.length - completed;
@@ -511,17 +879,22 @@ function AppShell({ auth }) {
   const [matches, setMatches] = useState(saved?.matches || []);
   const [seeds, setSeeds] = useState(saved?.seeds || []);
   const [items, setItems] = useState(saved?.items || []);
-  const [tab, setTab] = useState('dashboard');
+  const [tab, setTab] = useState('grand');
   const [menuCollapsed, setMenuCollapsed] = useState(false);
   const [activeId, setActiveId] = useState(saved?.activeId || initialChampionship.championship_id);
   const [championships, setChampionships] = useState(saved?.championships || [makeChampionshipSnapshot(initialChampionship, saved?.groups || [], saved?.matches || [], saved?.seeds || [])]);
   const [historyPlayerId, setHistoryPlayerId] = useState('');
   const [uxMode, setUxModeState] = useState(() => {
-    try { return localStorage.getItem(UX_MODE_KEY) || 'guided'; } catch { return 'guided'; }
+    try {
+      const savedMode = localStorage.getItem(UX_MODE_KEY);
+      return ['pro', 'guided', 'classic'].includes(savedMode) ? savedMode : 'pro';
+    } catch { return 'pro'; }
   });
   const setUxMode = (mode) => {
-    const next = mode === 'classic' ? 'classic' : 'guided';
+    const next = ['pro', 'guided', 'classic'].includes(mode) ? mode : 'pro';
     setUxModeState(next);
+    if (next === 'pro') setTab('grand');
+    if (next !== 'pro' && ['grand', 'rankingHub'].includes(tab)) setTab('dashboard');
     try { localStorage.setItem(UX_MODE_KEY, next); } catch {}
   };
   const [syncStatus, setSyncStatus] = useState('Sincronización local activa');
@@ -532,6 +905,11 @@ function AppShell({ auth }) {
   useEffect(() => {
     if (isRankingChampionship && RANKING_BLOCKED_TABS.has(tab)) setTab('ranking');
   }, [isRankingChampionship, tab]);
+
+  useEffect(() => {
+    if (uxMode !== 'pro' && ['grand', 'rankingHub'].includes(tab)) setTab('dashboard');
+    if (uxMode === 'pro' && tab === 'reports') setTab('dashboard');
+  }, [uxMode, tab]);
 
 
   useEffect(() => {
@@ -604,7 +982,7 @@ function AppShell({ auth }) {
 
   const audit = (type, detail) => setItems((prev) => [{ id: uid('A'), type, detail, timestamp: formatDateTimeEs(new Date()), championship_id: championship.championship_id }, ...prev]);
 
-  const loadChampionship = (id) => {
+  const loadChampionship = (id, targetTab = 'dashboard') => {
     const row = championships.find((item) => item.id === id);
     if (!row) return;
     setChampionship(row.championship);
@@ -612,7 +990,44 @@ function AppShell({ auth }) {
     setMatches(row.matches || []);
     setSeeds(row.seeds || []);
     setActiveId(id);
-    setTab('dashboard');
+    setTab(targetTab);
+  };
+
+  const createChampionshipFromWizard = (form) => {
+    const nextId = `CH-${uid('WIZ').slice(4, 10).toUpperCase()}`;
+    const isRanking = (form.championship_type || 'NORMAL') === 'RANKING';
+    const next = {
+      ...DEFAULT_CHAMPIONSHIP,
+      championship_id: nextId,
+      name: String(form.name || (isRanking ? 'Nuevo Ranking' : 'Nuevo Campeonato')).trim(),
+      championship_type: isRanking ? 'RANKING' : 'NORMAL',
+      venue_name: form.venue_name || DEFAULT_CHAMPIONSHIP.venue_name,
+      start_date: form.start_date || DEFAULT_CHAMPIONSHIP.start_date,
+      end_date: form.end_date || form.start_date || DEFAULT_CHAMPIONSHIP.end_date,
+      division_filter: form.division_filter || DEFAULT_CHAMPIONSHIP.division_filter,
+      preferred_group_size: Number(form.preferred_group_size || DEFAULT_CHAMPIONSHIP.preferred_group_size),
+      qualifiers_per_group: Number(form.qualifiers_per_group || DEFAULT_CHAMPIONSHIP.qualifiers_per_group),
+      extra_qualifiers_count: Number(form.extra_qualifiers_count || DEFAULT_CHAMPIONSHIP.extra_qualifiers_count),
+      total_qualifiers_f2: Number(form.total_qualifiers_f2 || DEFAULT_CHAMPIONSHIP.total_qualifiers_f2),
+      ranking_max_championships: Number(form.ranking_max_championships || DEFAULT_CHAMPIONSHIP.ranking_max_championships),
+      participant_ids: isRanking ? [] : DEFAULT_CHAMPIONSHIP.participant_ids,
+      participant_seeds: isRanking ? {} : DEFAULT_CHAMPIONSHIP.participant_seeds,
+      status: 'DRAFT',
+      closed_at: '',
+      closed_by: '',
+      finalized_at: '',
+      finalized_by: '',
+      confirmation_note: ''
+    };
+    const snapshot = makeChampionshipSnapshot(next, [], [], []);
+    setChampionship(next);
+    setGroups([]);
+    setMatches([]);
+    setSeeds([]);
+    setActiveId(next.championship_id);
+    setChampionships((prev) => [...prev.filter((row) => row.id !== next.championship_id), snapshot]);
+    setItems((prev) => [{ id: uid('A'), type: 'CHAMPIONSHIP_WIZARD_CREATED', detail: `Creado desde wizard: ${next.name}`, timestamp: formatDateTimeEs(new Date()), championship_id: next.championship_id }, ...prev]);
+    setTab(isRanking ? 'ranking' : 'dashboard');
   };
 
   const createChampionship = () => {
@@ -692,6 +1107,7 @@ ${link}`);
 
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
   const uiTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
+  const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking'].includes(tab));
   if (typeof window !== 'undefined') window.__CAROMCHAMPS_LANGUAGE__ = championship.global_settings?.language || 'es';
 
   return E('div', { className: `app-shell theme-${uiTheme} ${menuCollapsed ? 'menu-collapsed' : ''} ux-mode-${uxMode}` },
@@ -699,7 +1115,8 @@ ${link}`);
     E('main', { className: 'main' },
       E(TopBar, { championship, auth, setTab, uxMode, setUxMode }),
       uxMode === 'guided' ? E(UxContextPanel, { championship, championships, tab, setTab }) : null,
-      !isRankingChampionship ? E(Card, null,
+      uxMode === 'pro' && isProWorkspaceTab ? E(ProWorkspaceTabs, { tab, setTab, championship }) : null,
+      !isRankingChampionship && !(uxMode === 'pro' && !isProWorkspaceTab) ? E(Card, null,
         E('div', { className: 'toolbar' },
           E(Button, { onClick: runFullDemo, kind: 'success' }, 'Demo completa'),
           E(Button, { onClick: () => { setMatches(autoFillMatches(matches, 'quick-fill')); audit('QUICK_RESULTS', 'Resultados rápidos aplicados.'); }, kind: 'success' }, 'Resultados rápidos'),
@@ -708,8 +1125,10 @@ ${link}`);
         )
       ) : null,
       E('div', { className: 'sync-status' }, syncStatus),
-      tab === 'dashboard' && (uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
-      tab === 'championships' && E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship }),
+      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players }),
+      tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
+      tab === 'championships' && (uxMode === 'pro' ? E(ProChampionshipHub, { type: 'NORMAL', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) : E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship })),
+      tab === 'rankingHub' && uxMode === 'pro' && E(ProChampionshipHub, { type: 'RANKING', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }),
       tab === 'players' && E(PlayersModule, shared),
       tab === 'setup' && E(SetupModule, { championship, setChampionship, players, championships, activeId }),
       tab === 'groups' && E(GroupsModule, shared),

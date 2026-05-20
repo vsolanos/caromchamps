@@ -1,4 +1,33 @@
 
+## v6.1.0
+
+- Interface ProV: Wizard en overlay modal, con opciones SELECTIVO e INTERNACIONAL en División.
+- Interface ProV: tabs del campeonato rediseñados como flechas de proceso y sticky durante scroll.
+- Dashboard de campeonato: AVG acumulado por fase reducido 25%, reubicado al final después de agenda/lista; agregada lista de partidas pendientes.
+- Grand Dashboard: gráfica de campeonatos con más jugadores inscritos usando nombres reales.
+- Ranking: dashboard con Top 10, participantes por campeonato asociado y AVG general por campeonato asociado.
+- Campeonatos: botón Abrir habilitado para campeonato activo y navegación directa al Dashboard.
+- Llaves Face to Face: margen superior compactado, conectores Semis→Final corregidos, PDF ampliado y card de campeón más bajo.
+
+
+## v6.0.0
+
+- Nueva Interface ProV como interface predeterminada de apertura.
+- Se mantienen tres interfaces seleccionables: Interface ProV, Interface IA e Interface Clásica.
+- La preferencia de interface se recuerda en localStorage.
+- Nuevo Grand Dashboard con estadísticas acumuladas, gráficos de AVG, top 7 de jugadores por AVG y campeonatos con más inscripciones.
+- Menú Campeonatos filtra únicamente campeonatos tipo Normal.
+- Menú Ranking filtra únicamente campeonatos tipo Ranking.
+- Módulos operativos del campeonato convertidos en tabs en el panel derecho: Dashboard, Campeonato, Grupos, Calendario, Partidas, Llaves y Cierre.
+- Wizard guiado para creación de campeonatos normales.
+- Wizard guiado simplificado para creación de campeonatos Ranking sin asociación manual de jugadores.
+- Dashboard de campeonato con gráfica de AVG general acumulado por fase.
+- Llaves Continua y Face to Face con Zoom In/Zoom Out independiente de la aplicación.
+- Face to Face ajustado para acercar margen superior y encabezados de columnas a la visualización Continua.
+- README reestructurado con historial consolidado de versiones y cambios.
+- package.json actualizado a 6.0.0.
+
+
 ## v5.9.0
 
 - Nueva interface UX guiada opcional, con navegación agrupada por flujo real de operación.

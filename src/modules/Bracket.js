@@ -472,7 +472,7 @@ function buildFaceBranchLayout(matches, final, side) {
   });
 
   const minTop = rawTops.length ? Math.min(...rawTops) : 0;
-  const topPadding = 18;
+  const topPadding = 4;
   const columnWidth = 330;
   const columnGap = 42;
   const positionsById = new Map();
@@ -551,23 +551,30 @@ function FaceBranch({ layout, playerMap, matches }) {
   );
 }
 
-function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalOffset }) {
+function closestSemiPosition(layout, finalY) {
+  const semis = Array.from(layout.positionsById.values()).filter((position) => position.round === 'SF');
+  if (!semis.length) return null;
+  return semis.sort((a, b) => Math.abs((a.y + a.height / 2) - finalY) - Math.abs((b.y + b.height / 2) - finalY))[0];
+}
+
+function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }) {
   if (!final) return null;
-  const leftSemi = final.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null;
-  const rightSemi = final.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null;
-  if (!leftSemi && !rightSemi) return null;
   const width = 380;
   const finalWrapWidth = 360;
   const finalLeft = Math.round((width - finalWrapWidth) / 2);
   const finalRight = finalLeft + finalWrapWidth;
-  const titleHeight = 42;
+  const titleHeight = 36;
   const finalCardHeight = 292;
   const finalY = finalVerticalOffset + titleHeight + Math.round(finalCardHeight / 2);
-  const leftJoinX = Math.max(18, finalLeft - 16);
-  const rightJoinX = Math.min(width - 18, finalRight + 16);
+  const leftSemi = (final.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null) || closestSemiPosition(leftLayout, finalY);
+  const rightSemi = (final.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null) || closestSemiPosition(rightLayout, finalY);
+  if (!leftSemi && !rightSemi) return null;
+  const leftJoinX = Math.max(18, finalLeft - 18);
+  const rightJoinX = Math.min(width - 18, finalRight + 18);
   const pathLeft = leftSemi ? `M 0 ${leftSemi.y + leftSemi.height / 2} H ${leftJoinX} V ${finalY} H ${finalLeft}` : null;
   const pathRight = rightSemi ? `M ${width} ${rightSemi.y + rightSemi.height / 2} H ${rightJoinX} V ${finalY} H ${finalRight}` : null;
-  return E('svg', { className: 'face-center-connector-svg', width, height: '100%', viewBox: `0 0 ${width} 1000`, preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' },
+  const viewHeight = Math.max(640, Number(stageHeight || 0));
+  return E('svg', { className: 'face-center-connector-svg', width, height: viewHeight, viewBox: `0 0 ${width} ${viewHeight}`, preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' },
     pathLeft ? E('path', { className: 'face-connector-path face-center-connector-path', d: pathLeft }) : null,
     pathRight ? E('path', { className: 'face-connector-path face-center-connector-path', d: pathRight }) : null
   );
@@ -581,8 +588,8 @@ function FaceToFaceView({ matches, playerMap }) {
   const baseStageHeight = Math.max(leftLayout.height, rightLayout.height, 640);
   // v5.7: move the final down so it breathes away from semifinals. The offset
   // is close to two face cards, matching the approved visual feedback.
-  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 1.75) : 0;
-  const championVerticalGap = final?.winner_id ? 210 : 0;
+  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 1.82) : 0;
+  const championVerticalGap = final?.winner_id ? 270 : 0;
   const stageHeight = baseStageHeight + finalVerticalOffset + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
@@ -593,7 +600,7 @@ function FaceToFaceView({ matches, playerMap }) {
     E('div', { className: 'face-grid face-grid-balanced face-tree-grid', style: { '--face-stage-height': `${stageHeight}px`, '--face-final-offset': `${finalVerticalOffset}px` } },
       E(FaceBranch, { layout: leftLayout, playerMap, matches }),
       E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
-        E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset }),
+        E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }),
         final ? E('div', { className: 'face-final-wrap face-tree-final-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
           E('div', { className: 'round-premium-title face-round-title' },
             E('h3', null, 'FINAL'),
@@ -619,6 +626,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   const [pageSize, setPageSize] = useState(championship.global_settings?.pdf_default_page_size || 'A3');
   const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
   const [scale, setScale] = useState('100');
+  const [visualZoom, setVisualZoom] = useState(1);
   const [rollbackReason, setRollbackReason] = useState('Corrección de fase autorizada');
   const [notice, setNotice] = useState(null);
   const noticeTimerRef = useRef(null);
@@ -717,6 +725,10 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     notify(`Regreso de fase realizado correctamente: ${roundDisplayName(currentRound)} → ${previousRound === 'GROUPS' ? 'Grupos' : roundDisplayName(previousRound)}.`, 'warning');
   };
 
+  const canZoomBracket = view === 'continuous' || view === 'face';
+  const updateVisualZoom = (delta) => setVisualZoom((current) => Math.min(1.6, Math.max(0.45, Number((current + delta).toFixed(2)))));
+  const resetVisualZoom = () => setVisualZoom(1);
+
   const exportCurrentViewPdf = () => {
     if (!allElimination.length) return alert('No hay información de bracket para exportar.');
     const viewLabel = view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face';
@@ -762,6 +774,12 @@ export function BracketModule({ championship, players, matches, setMatches, seed
           E('button', { className: view === 'continuous' ? 'active' : '', onClick: () => setView('continuous') }, 'Continua'),
           E('button', { className: view === 'face' ? 'active' : '', onClick: () => setView('face') }, 'Face to Face')
         ),
+        canZoomBracket ? E('div', { className: 'bracket-zoom-controls', role: 'group', 'aria-label': 'Zoom visual del bracket' },
+          E('button', { type: 'button', onClick: () => updateVisualZoom(-0.1), title: 'Zoom out' }, '−'),
+          E('b', null, `${Math.round(visualZoom * 100)}%`),
+          E('button', { type: 'button', onClick: () => updateVisualZoom(0.1), title: 'Zoom in' }, '+'),
+          E('button', { type: 'button', onClick: resetVisualZoom, title: 'Restablecer zoom' }, '100%')
+        ) : null,
         E('div', { className: 'control-chip' }, E('span', null, 'Clasificados'), E('b', null, seeds.length)),
         E('div', { className: 'control-chip' }, E('span', null, 'Partidas KO'), E('b', null, koMatches.length))
       ),
@@ -771,8 +789,12 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       E(PdfDocument, { title: 'Llaves / Bracket', subtitle: `Vista ${view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face'}`, championship, meta: [`Clasificados: ${seeds.length}`, `Partidas: ${allElimination.length}`] },
       !allElimination.length ? E(EmptyState, { title: 'Sin bracket', message: 'Clasifique grupos y genere la estructura de eliminación directa.' }) : null,
       allElimination.length && view === 'tabular' ? E(TabularView, { matches: allElimination, playerMap }) : null,
-      allElimination.length && view === 'continuous' ? E(ContinuousView, { matches: allElimination, playerMap }) : null,
-      allElimination.length && view === 'face' ? E(FaceToFaceView, { matches: allElimination, playerMap }) : null
+      allElimination.length && canZoomBracket ? E('div', { className: 'bracket-zoom-viewport', style: { '--visual-zoom': visualZoom, '--visual-zoom-width': `${100 / visualZoom}%` } },
+        E('div', { className: 'bracket-zoom-content' },
+          view === 'continuous' ? E(ContinuousView, { matches: allElimination, playerMap }) : null,
+          view === 'face' ? E(FaceToFaceView, { matches: allElimination, playerMap }) : null
+        )
+      ) : null
       )
     )
   );
