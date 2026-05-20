@@ -1,8 +1,8 @@
-# CaromChamps v5.8.0
+# CaromChamps v5.9.0
 
 Actualización enfocada en el flujo de campeonatos tipo Ranking, corrección de visualización Face to Face, alineación de banderas en tablas de grupos, mensajes de confirmación en llaves y scroll del menú lateral.
 
-## Cambios principales v5.8.0
+## Cambios principales v5.9.0
 
 - Face to Face: la partida Final se desplaza hacia abajo para separarla visualmente de las semifinales.
 - Face to Face: el card de Campeón/Ganador ahora aparece debajo del card de la Final, con conector vertical.
@@ -10,7 +10,7 @@ Actualización enfocada en el flujo de campeonatos tipo Ranking, corrección de 
 - Ranking: la columna Jugador ahora incluye historial clicable, asociación y bandera del país alineadas horizontal y verticalmente.
 - Ranking: el cálculo ahora incluye solamente jugadores que participaron en campeonatos normales asociados al ranking.
 - Ranking: al crear un campeonato tipo Ranking no se requiere ni conserva selección de jugadores participantes.
-- `package.json` actualizado a versión `5.8.0`.
+- `package.json` actualizado a versión `5.9.0`.
 
 
 ## Cambios principales v5.6.0
@@ -459,3 +459,11 @@ npm.cmd run check:syntax
 npm.cmd run build
 npm.cmd run dev
 ```
+
+## UX guiada v5.9.0
+
+- Se agrega una interface guiada por flujo de trabajo con navegación agrupada: Inicio, Preparar, Operar, Resultados y Administración.
+- Se conserva la interface clásica con cambio temporal desde el menú y el topbar.
+- Dashboard guiado con siguiente acción recomendada, alertas, workflow stepper, catálogo de reportes, checklist de cierre y vista previa de agenda por mesa.
+- Banner explicativo para campeonatos tipo Ranking.
+- Base reusable `DataTableCarom` para futuras tablas con búsqueda, ordenamiento, densidad y exportación CSV.

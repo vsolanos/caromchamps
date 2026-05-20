@@ -1,4 +1,14 @@
 
+## v5.9.0
+
+- Nueva interface UX guiada opcional, con navegación agrupada por flujo real de operación.
+- Se mantiene la interface clásica sin eliminarla; el usuario puede alternar entre la nueva UX y la anterior desde el topbar o menú lateral.
+- Dashboard convertido en centro de control con siguiente acción recomendada, alertas, stepper operativo, catálogo de reportes y checklist de cierre.
+- Modo Ranking con banner explicativo y comportamiento guiado para evitar confundir ausencia de menús con errores.
+- Se incorpora base técnica `DataTableCarom` para estandarizar tablas futuras con búsqueda, ordenamiento, densidad y CSV.
+- Se agregan estilos responsive para nueva navegación, panel contextual y componentes UX sin modificar el flujo clásico existente.
+
+
 ## v5.8.0
 
 - Llaves Face to Face: compactación vertical superior para acercar encabezados de columnas a la geometría de la visualización continua.
