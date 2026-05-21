@@ -22,6 +22,7 @@ import {
   validateMatch,
   formatDateEs,
   getPhaseRule,
+  usesAverageControl,
   num
 } from '../lib/tournament.js';
 
@@ -143,6 +144,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
   const [sheetAttachments, setSheetAttachments] = useState([]);
   const [uploadSummary, setUploadSummary] = useState('');
   const playerMap = Object.fromEntries(players.map((p) => [p.player_id, p]));
+  const avgEnabled = usesAverageControl(championship);
   const groupOptions = [...new Set(matches.map((m) => m.group_name).filter(Boolean))];
   const phaseOptions = [...new Set(matches.map((m) => m.phase).filter(Boolean))];
   const roundOptions = getAllRoundOptions(matches).filter((r) => ['R0', 'R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F'].includes(r));
@@ -192,7 +194,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     if (match.match_status === 'PLANNED') return alert('Esta partida está planificada para calendario. Se habilitará cuando la ronda anterior defina jugadores.');
     const wasCompleted = match.match_status === 'COMPLETED' || match.match_status === 'LOCKED';
     if (wasCompleted && !reason.trim()) return alert('Debe indicar motivo para modificar una partida completada o bloqueada.');
-    const errors = validateMatch(match);
+    const errors = validateMatch(match, championship);
     if (errors.length) return alert(errors.join('\n'));
     const completed = completeMatchAdvanced({ ...match, edit_reason: wasCompleted ? reason : match.edit_reason, validation_error: '' });
     setMatches(matches.map((m) => (m.match_id === match.match_id ? completed : m)));
@@ -205,7 +207,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     if (selected.some((m) => m.match_status === 'PLANNED')) return alert('Las partidas planificadas no pueden capturarse hasta generar la ronda correspondiente.');
     const requiresReason = selected.some((m) => ['COMPLETED', 'LOCKED'].includes(m.match_status));
     if (requiresReason && !reason.trim()) return alert('Debe indicar motivo para guardado masivo que modifica partidas completadas/bloqueadas.');
-    const errors = validateBulkMatches(selected);
+    const errors = validateBulkMatches(selected, championship);
     setErrorSummary(errors);
     if (errors.length) return alert(`Hay ${errors.length} partida(s) con errores. Revise el resumen antes de confirmar.`);
     const completed = selected.map((m) => completeMatchAdvanced({ ...m, edit_reason: requiresReason ? reason : m.edit_reason, validation_error: '' }));
@@ -234,7 +236,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     const cells = [
       E('td', { className: 'player-name', key: 'player' }, playerMap[playerId] ? E(PlayerHistoryTrigger, { player: playerMap[playerId] }) : (isPlanned ? 'Por definir' : '')), 
       E('td', { key: 'caroms', className: activeDataClass(caromsValue) }, E(Input, { type: 'number', disabled: isPlanned, value: caromsValue, onChange: (e) => patchKey(isP1 ? 'caroms_p1' : 'caroms_p2', e.target.value) })),
-      E('td', { key: 'innings', className: activeDataClass(inningsValue) }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })),
+      avgEnabled ? E('td', { key: 'innings', className: activeDataClass(inningsValue) }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })) : null,
       E('td', { key: 's1', className: activeDataClass(s1Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
       E('td', { key: 's2', className: activeDataClass(s2Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
     ];
@@ -242,7 +244,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
       const penaltiesValue = isP1 ? match.penalties_p1 : match.penalties_p2;
       cells.push(E('td', { key: 'penalties', className: activeDataClass(penaltiesValue) }, E(Input, { type: 'number', disabled: isPlanned, value: penaltiesValue, onChange: (e) => patchKey(isP1 ? 'penalties_p1' : 'penalties_p2', e.target.value) })));
     }
-    cells.push(E('td', { key: 'avg', className: String(stats.avg || '').trim() !== 'N/A' ? 'match-active-data-cell has-result-data' : 'match-active-data-cell' }, stats.avg));
+    if (avgEnabled) cells.push(E('td', { key: 'avg', className: String(stats.avg || '').trim() !== 'N/A' ? 'match-active-data-cell has-result-data' : 'match-active-data-cell' }, stats.avg));
     return E('tr', { key: `${match.match_id}-${playerNumber}`, className: stats.is_winner ? 'winner-row' : '' }, ...cells);
   };
 
@@ -253,7 +255,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
       title: `Planillas - ${championship.name || 'Campeonato'}`,
       pageSize: 'Letter',
       orientation: 'portrait',
-      scale: '100',
+      scale: '90',
       afterPrint: () => audit('SCORE_SHEETS_PDF', `Planillas generadas para ${scoreSheetMatches.length} partidas.`)
     });
   };
@@ -429,7 +431,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
           E('div', null,
             E('label', { className: 'small' }, E('input', { type: 'checkbox', checked: selectedIds.includes(match.match_id), onChange: () => toggleSelected(match.match_id) }), ' seleccionar'),
             E('h3', { style: { margin: 0 } }, `${matchCode(match)} · ${match.group_name || matchRoundLabel(match)}`),
-            E('p', { className: 'small', style: { margin: '4px 0 0' } }, `${match.scheduled_date ? formatDateEs(match.scheduled_date) : 'Sin fecha'} ${match.scheduled_time || ''} · ${match.assigned_table || 'Sin mesa'} · ${matchDetailedScore(match)}`)
+            E('p', { className: 'small', style: { margin: '4px 0 0' } }, `${match.scheduled_date ? formatDateEs(match.scheduled_date) : 'Sin fecha'} ${match.scheduled_time || ''} · ${match.assigned_table || 'Sin mesa'} · ${matchDetailedScore(match, championship)}`)
           ),
           E(Badge, { kind: match.match_status === 'COMPLETED' ? 'success' : match.validation_error ? 'danger' : 'neutral' }, matchDisplayStatus(match))
         ),
@@ -441,7 +443,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
           E('div', { className: 'toolbar', style: { alignItems: 'end' } }, E(Button, { onClick: () => saveOne(match), kind: 'success', disabled: match.match_status === 'PLANNED' }, match.match_status === 'PLANNED' ? 'Planificada' : 'Guardar'), E(Button, { onClick: () => reopen(match), kind: 'warning' }, 'Reabrir'))
         ),
         E('div', { className: 'table-wrap', style: { marginTop: 12 } }, E('table', null,
-          E('thead', null, E('tr', null, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Promedio'] : ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Penales', 'Promedio']).map((h) => E('th', { key: h }, h)))),
+          E('thead', null, E('tr', null, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? (avgEnabled ? ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Promedio'] : ['Jugador', 'Carambolas', 'SM1', 'SM2']) : (avgEnabled ? ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Penales', 'Promedio'] : ['Jugador', 'Carambolas', 'SM1', 'SM2', 'Penales'])).map((h) => E('th', { key: h }, h)))),
           E('tbody', null, playerLine(match, 1), playerLine(match, 2))
         ))
       ))

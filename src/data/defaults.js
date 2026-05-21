@@ -171,6 +171,7 @@ export const DEFAULT_CHAMPIONSHIP = {
   participant_ids: DEFAULT_PLAYERS.map((p) => p.player_id),
   participant_seeds: Object.fromEntries(DEFAULT_PLAYERS.slice(0, 16).map((p, i) => [p.player_id, i + 1])),
   championship_type: 'NORMAL',
+  average_control_enabled: true,
   ranking_championship_id: '',
   ranking_max_championships: 5,
   ranking_points_rules: [

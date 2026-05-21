@@ -7,6 +7,10 @@ export function num(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+export function usesAverageControl(championship = {}) {
+  return !(championship?.average_control_enabled === false || championship?.average_control_enabled === 'NO');
+}
+
 export function fmtAvg(value) {
   return value === null || value === undefined || Number.isNaN(value) ? 'N/A' : Number(value).toFixed(3);
 }
@@ -334,15 +338,16 @@ export function generateRoundRobinMatches(championship, groups, startNumber = 1)
   return assignMatchNumbers(matches, startNumber);
 }
 
-export function validateMatch(match) {
+export function validateMatch(match, championship = {}) {
   const errors = [];
-  if (num(match.innings_p1) <= 0 || num(match.innings_p2) <= 0) errors.push('Entradas deben ser mayores a cero.');
+  const avgEnabled = usesAverageControl(championship);
+  if (avgEnabled && (num(match.innings_p1) <= 0 || num(match.innings_p2) <= 0)) errors.push('Entradas deben ser mayores a cero.');
   if (num(match.s2_p1) > num(match.s1_p1)) errors.push('S2 J1 no puede superar S1 J1.');
   if (num(match.s2_p2) > num(match.s1_p2)) errors.push('S2 J2 no puede superar S1 J2.');
   if (num(match.s1_p1) > num(match.caroms_p1)) errors.push('S1 J1 no puede superar carambolas J1.');
   if (num(match.s1_p2) > num(match.caroms_p2)) errors.push('S1 J2 no puede superar carambolas J2.');
-  if (match.applied_closure_type === 'CON_CIERRE' && num(match.innings_p1) !== num(match.innings_p2)) errors.push('Con Cierre requiere entradas iguales.');
-  if (match.applied_closure_type === 'SIN_CIERRE' && Math.abs(num(match.innings_p1) - num(match.innings_p2)) > 1) errors.push('Sin Cierre permite diferencia máxima de una entrada.');
+  if (avgEnabled && match.applied_closure_type === 'CON_CIERRE' && num(match.innings_p1) !== num(match.innings_p2)) errors.push('Con Cierre requiere entradas iguales.');
+  if (avgEnabled && match.applied_closure_type === 'SIN_CIERRE' && Math.abs(num(match.innings_p1) - num(match.innings_p2)) > 1) errors.push('Sin Cierre permite diferencia máxima de una entrada.');
   if (num(match.caroms_p1) === num(match.caroms_p2) && !['GROUPS', 'GROUPS_F2'].includes(match.phase) && num(match.penalties_p1) === num(match.penalties_p2)) {
     errors.push('Empate eliminatorio requiere penales diferentes.');
   }
@@ -396,7 +401,8 @@ export function clearResults(matches) {
   }));
 }
 
-export function buildStats(matches, players) {
+export function buildStats(matches, players, championship = {}) {
+  const avgEnabled = usesAverageControl(championship);
   const map = new Map(players.map((p) => [p.player_id, {
     player: p, played: 0, wins: 0, draws: 0, losses: 0, points: 0, caroms: 0, innings: 0, s1: 0, s2: 0, avg: null
   }]));
@@ -415,28 +421,35 @@ export function buildStats(matches, players) {
       if (m.winner_id === id) { row.wins += 1; row.points += 2; }
       else if (!m.winner_id) { row.draws += 1; row.points += 1; }
       else row.losses += 1;
-      row.avg = row.innings ? row.caroms / row.innings : null;
+      row.avg = avgEnabled && row.innings ? row.caroms / row.innings : null;
     });
   });
-  return [...map.values()].sort((a, b) => b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2);
+  const rows = [...map.values()];
+  return rows.sort((a, b) => avgEnabled
+    ? b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2
+    : b.points - a.points || b.wins - a.wins || a.losses - b.losses || b.caroms - a.caroms);
 }
 
-export function groupStandings(groups, matches) {
+export function groupStandings(groups, matches, championship = {}) {
   return groups.map((group) => {
-    const rows = buildStats(matches.filter((m) => m.group_id === group.group_id), group.players).map((row, index) => ({ ...row, group_position: index + 1 }));
+    const rows = buildStats(matches.filter((m) => m.group_id === group.group_id), group.players, championship).map((row, index) => ({ ...row, group_position: index + 1 }));
     return { ...group, standings: rows };
   });
 }
 
 export function qualify(groups, championship) {
   const direct = [];
+  const avgEnabled = usesAverageControl(championship);
+  const qualifierSort = (a, b) => avgEnabled
+    ? b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2
+    : b.points - a.points || b.wins - a.wins || a.losses - b.losses || b.caroms - a.caroms;
   const extras = [];
   groups.forEach((group) => group.standings.forEach((row) => {
     if (row.group_position <= num(championship.qualifiers_per_group)) direct.push({ ...row, source: group.group_name, type: 'DIRECT' });
     else if (row.group_position === num(championship.extra_qualifier_position)) extras.push({ ...row, source: group.group_name, type: 'EXTRA' });
   }));
-  const chosenExtras = extras.sort((a, b) => b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2).slice(0, num(championship.extra_qualifiers_count));
-  return [...direct, ...chosenExtras].sort((a, b) => a.group_position - b.group_position || b.points - a.points || (b.avg || 0) - (a.avg || 0)).map((row, index) => ({
+  const chosenExtras = extras.sort(qualifierSort).slice(0, num(championship.extra_qualifiers_count));
+  return [...direct, ...chosenExtras].sort((a, b) => a.group_position - b.group_position || qualifierSort(a, b)).map((row, index) => ({
     seed_position: index + 1,
     player: row.player,
     source: row.source,
@@ -767,12 +780,13 @@ export function generateFullKnockoutDemo(championship, seeds, startNumber = 1, s
 }
 
 function performanceSort(a, b, policy = 'POINTS_THEN_AVG') {
+  if (policy === 'NO_AVG') return b.points - a.points || b.wins - a.wins || a.losses - b.losses || b.caroms - a.caroms;
   if (policy === 'AVG_THEN_POINTS') return (b.avg || 0) - (a.avg || 0) || b.points - a.points || b.s1 - a.s1 || b.s2 - a.s2;
   return b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2;
 }
 
 export function buildFinalRankings(players, matches, seeds = [], championship = {}) {
-  const stats = buildStats(matches, players);
+  const stats = buildStats(matches, players, championship);
   const map = new Map(stats.map((row) => [row.player.player_id, { ...row, final_phase: 'Grupos', final_status: 'No clasificado', tier: 900 }]));
   seeds.forEach((seed) => {
     const id = seed.player?.player_id || seed.player_id;
@@ -816,7 +830,7 @@ export function buildFinalRankings(players, matches, seeds = [], championship = 
     return 4;
   };
   return [...map.values()]
-    .sort((a, b) => statusPriority(a) - statusPriority(b) || performanceSort(a, b, championship.third_place_policy))
+    .sort((a, b) => statusPriority(a) - statusPriority(b) || performanceSort(a, b, usesAverageControl(championship) ? championship.third_place_policy : 'NO_AVG'))
     .map((row, index) => ({ ...row, final_position: index + 1 }));
 }
 
@@ -1072,11 +1086,12 @@ export function matchPlayerStats(match, playerNumber) {
   };
 }
 
-export function matchDetailedScore(match) {
+export function matchDetailedScore(match, championship = {}) {
   const a = matchPlayerStats(match, 1);
   const b = matchPlayerStats(match, 2);
   const penaltyText = (a.penalties || b.penalties) ? ` · PEN ${a.penalties}-${b.penalties}` : '';
   if (match.match_status !== 'COMPLETED') return 'Pendiente';
+  if (!usesAverageControl(championship)) return `${a.caroms}-${b.caroms}${penaltyText}`;
   return `${a.caroms}-${b.caroms} · Ent ${a.innings}/${b.innings} · AVG ${a.avg}/${b.avg}${penaltyText}`;
 }
 
@@ -1105,8 +1120,8 @@ export function completeMatchAdvanced(match) {
   return { ...completeMatch(match), locked_at: match.locked_at || formatDateTimeEs(new Date()), match_result_type: type };
 }
 
-export function validateBulkMatches(matches) {
-  return matches.map((match) => ({ match, errors: validateMatch(match) })).filter((item) => item.errors.length > 0);
+export function validateBulkMatches(matches, championship = {}) {
+  return matches.map((match) => ({ match, errors: validateMatch(match, championship) })).filter((item) => item.errors.length > 0);
 }
 
 export function phaseReachedForPlayer(playerId, matches, seeds) {

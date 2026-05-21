@@ -4811,3 +4811,42 @@ body.printing-groups .aligned-player-submeta {
     margin-top: 24px !important;
   }
 }
+
+
+/* v6.3 corrections: ProV tab rollback, blue arrows in dark mode, Face to Face final alignment, browser/PDF stability and score-sheet sizing. */
+.theme-dark.ux-mode-pro .pro-workspace-tabs-card,
+.theme-dark.ux-mode-pro .pro-workspace-tabs-sticky {
+  background: linear-gradient(135deg, rgba(15,23,42,.96), rgba(8,47,73,.94)) !important;
+  color: #e5e7eb !important;
+  border-color: rgba(250,204,21,.30) !important;
+}
+.theme-dark.ux-mode-pro .pro-workspace-title h2 { color: #f8fafc !important; }
+.theme-dark.ux-mode-pro .pro-workspace-title .ux-kicker { color: #67e8f9 !important; }
+.theme-dark.ux-mode-pro .pro-process-tabs button,
+.theme-dark.ux-mode-pro .pro-process-tabs button.has-next::after {
+  background: linear-gradient(135deg, #0ea5e9, #0369a1) !important;
+  color: #e0f2fe !important;
+  border-color: rgba(125,211,252,.45) !important;
+}
+.theme-dark.ux-mode-pro .pro-process-tabs button.active,
+.theme-dark.ux-mode-pro .pro-process-tabs button.active::after {
+  background: linear-gradient(135deg, #facc15, #fde68a) !important;
+  color: #082f49 !important;
+}
+.pro-dashboard-avg-row { align-items: stretch; }
+.face-final-up-wrap { width: 560px !important; min-width: 560px !important; }
+.face-final-row { align-items: flex-start !important; justify-content: center !important; gap: 18px !important; }
+.face-final-row .continuous-match { flex: 0 0 330px !important; }
+.face-tree-final-wrap .face-champion-node.face-champion-side-final {
+  margin: 0 !important;
+  align-self: flex-start !important;
+  width: 218px !important;
+  min-width: 218px !important;
+}
+.face-tree-final-wrap .face-champion-side-final .face-champion-line { top: 42px !important; }
+@media print {
+  body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium { zoom: var(--pdf-scale, .26) !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-final-wrap { transform: translateY(var(--face-final-offset, 0px)) !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-champion-side-final { margin-top: 0 !important; }
+  body.printing-score-sheets .score-sheet-page { transform: scale(.90) !important; transform-origin: top center !important; }
+}

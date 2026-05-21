@@ -7,7 +7,7 @@ import { SharedChampionshipView } from './components/SharedView.js';
 import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
 import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
-import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg, calculateTotalQualifiers, num } from './lib/tournament.js';
+import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, usesAverageControl, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg, calculateTotalQualifiers, num } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
 import { PlayersModule } from './modules/Players.js';
 import { SetupModule } from './modules/Setup.js';
@@ -716,9 +716,28 @@ function ProWorkspaceTabs({ tab, setTab, championship }) {
   );
 }
 
-function ChampionshipAvgByPhaseChart({ championship, matches }) {
-  if ((championship?.championship_type || 'NORMAL') === 'RANKING') return null;
-  return E('div', { className: 'pro-dashboard-chart-full' }, E(MiniLineChart, { data: phaseAverageSeries(matches), title: 'AVG general acumulado por fase', valueFormatter: (v) => fmtAvg(v) }));
+function ChampionshipAvgByPhaseChart({ championship, matches, setTab }) {
+  if ((championship?.championship_type || 'NORMAL') === 'RANKING' || !usesAverageControl(championship)) return null;
+  const phaseData = phaseAverageSeries(matches).filter((item) => item.value > 0);
+  const finalAvg = averageFromMatches(matches);
+  const data = [...phaseData, { label: 'AVG Final', value: finalAvg, onClick: () => setTab?.('reports') }];
+  return E('div', { className: 'pro-dashboard-chart-full' }, E(MiniLineChart, { data, title: 'AVG general acumulado por fase + AVG final', valueFormatter: (v) => fmtAvg(v), onPointClick: () => setTab?.('reports') }));
+}
+
+function ProTournamentTopAvgPlayers({ players, matches, openPlayerHistory }) {
+  const best = new Map();
+  (matches || []).filter((m) => m.match_status === 'COMPLETED').forEach((m) => [1, 2].forEach((side) => {
+    const stats = matchPlayerStats(m, side);
+    if (!stats.player_id || !stats.innings) return;
+    const avg = Number(stats.caroms || 0) / Number(stats.innings || 1);
+    const current = best.get(stats.player_id) || { playerId: stats.player_id, value: 0 };
+    if (avg > current.value) best.set(stats.player_id, { playerId: stats.player_id, value: avg });
+  }));
+  const rows = [...best.values()].sort((a, b) => b.value - a.value).slice(0, 7).map((row) => {
+    const player = (players || []).find((p) => p.player_id === row.playerId);
+    return { label: playerName(player).slice(0, 22), fullLabel: playerName(player), value: row.value, onClick: () => openPlayerHistory?.(row.playerId) };
+  });
+  return E(MiniBarChart, { data: rows, title: 'Top 7 jugadores por AVG del torneo', valueFormatter: (v) => fmtAvg(v) });
 }
 
 function ProPendingMatchesList({ matches, players }) {
@@ -740,11 +759,14 @@ function ProPendingMatchesList({ matches, players }) {
     )) : E('p', { className: 'small' }, 'No hay partidas pendientes.'));
 }
 
-function ProChampionshipDashboard({ championship, players, groups, matches, seeds, championships, setTab }) {
+function ProChampionshipDashboard({ championship, players, groups, matches, seeds, championships, setTab, openPlayerHistory }) {
   return E('div', { className: 'grid pro-championship-dashboard' },
     E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }),
     E(ProPendingMatchesList, { matches, players }),
-    E(ChampionshipAvgByPhaseChart, { championship, matches })
+    E('div', { className: 'grid grid-2 pro-dashboard-avg-row' },
+      E(ChampionshipAvgByPhaseChart, { championship, matches, setTab }),
+      usesAverageControl(championship) ? E(ProTournamentTopAvgPlayers, { players, matches, openPlayerHistory }) : null
+    )
   );
 }
 
@@ -761,7 +783,8 @@ function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
     qualifiers_per_group: '2',
     extra_qualifiers_count: '2',
     total_qualifiers_f2: '16',
-    ranking_max_championships: '5'
+    ranking_max_championships: '5',
+    average_control_enabled: 'SI'
   });
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const steps = type === 'RANKING' ? ['Tipo y nombre', 'Reglas Ranking', 'Confirmación'] : ['Tipo y nombre', 'Fechas y sede', 'Reglas base', 'Confirmación'];
@@ -776,6 +799,7 @@ function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
       E('label', null, 'Nombre', E('input', { value: form.name, onChange: (e) => update('name', e.target.value) })),
       E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: type === 'RANKING', onChange: (e) => update('championship_type', e.target.value) }, type === 'RANKING' ? [E('option', { key: 'RANKING', value: 'RANKING' }, 'Ranking')] : [E('option', { key: 'NORMAL', value: 'NORMAL' }, 'Normal'), E('option', { key: 'DOBLE_FASE_GRUPOS', value: 'DOBLE_FASE_GRUPOS' }, 'Doble Fase Grupos')])),
       E('label', null, 'División', E('select', { value: form.division_filter, onChange: (e) => update('division_filter', e.target.value) }, ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL', 'NA'].map((value) => E('option', { key: value, value }, value)))),
+      E('label', null, 'Control de promedios', E('select', { value: form.average_control_enabled, onChange: (e) => update('average_control_enabled', e.target.value) }, ['SI', 'NO'].map((value) => E('option', { key: value, value }, value)))),
       E('label', null, 'Estado inicial', E('input', { value: 'DRAFT', disabled: true }))
     ) : null,
     step === 1 && type !== 'RANKING' ? E('div', { className: 'grid grid-2 pro-form-grid' },
@@ -856,7 +880,7 @@ function GroupsF2Module({ championship, setChampionship, players, matches, setMa
   const [form, setForm] = useState(f2Settings);
   const groupsF2 = Array.isArray(championship.groups_f2) ? championship.groups_f2 : [];
   const matchesF2 = (matches || []).filter((m) => m.phase === 'GROUPS_F2');
-  const standingsF2 = groupStandings(groupsF2, matchesF2);
+  const standingsF2 = groupStandings(groupsF2, matchesF2, championship);
   const pending = matchesF2.filter((m) => m.match_status !== 'COMPLETED');
   const patch = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const f2ChampionshipConfig = {
@@ -981,7 +1005,17 @@ function AppShell({ auth }) {
   const [matches, setMatches] = useState(saved?.matches || []);
   const [seeds, setSeeds] = useState(saved?.seeds || []);
   const [items, setItems] = useState(saved?.items || []);
-  const [tab, setTab] = useState('grand');
+  const initialHashTab = (() => { try { const value = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('tab'); return value || 'grand'; } catch { return 'grand'; } })();
+  const [tab, setTabState] = useState(initialHashTab);
+  const setTab = (nextTab) => {
+    const safeTab = String(nextTab || 'dashboard');
+    setTabState(safeTab);
+    try {
+      const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      params.set('tab', safeTab);
+      window.history.replaceState({ caromchamps: true, tab: safeTab }, '', `${window.location.pathname}#${params.toString()}`);
+    } catch {}
+  };
   const [menuCollapsed, setMenuCollapsed] = useState(false);
   const [activeId, setActiveId] = useState(saved?.activeId || initialChampionship.championship_id);
   const [championships, setChampionships] = useState(saved?.championships || [makeChampionshipSnapshot(initialChampionship, saved?.groups || [], saved?.matches || [], saved?.seeds || [])]);
@@ -1006,6 +1040,26 @@ function AppShell({ auth }) {
   const [remoteReady, setRemoteReady] = useState(false);
   const didLoadRemote = useRef(false);
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
+
+
+  useEffect(() => {
+    const handleBrowserNavigation = () => {
+      try {
+        const value = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('tab');
+        if (value) setTabState(value);
+        if (!window.location.hash) {
+          window.history.replaceState({ caromchamps: true, tab }, '', `${window.location.pathname}#tab=${encodeURIComponent(tab || 'grand')}`);
+        }
+      } catch {}
+    };
+    window.addEventListener('hashchange', handleBrowserNavigation);
+    window.addEventListener('popstate', handleBrowserNavigation);
+    if (!window.location.hash) handleBrowserNavigation();
+    return () => {
+      window.removeEventListener('hashchange', handleBrowserNavigation);
+      window.removeEventListener('popstate', handleBrowserNavigation);
+    };
+  }, [tab]);
 
   useEffect(() => {
     if (isRankingChampionship && RANKING_BLOCKED_TABS.has(tab)) setTab('ranking');
@@ -1122,6 +1176,7 @@ function AppShell({ auth }) {
       extra_qualifiers_count: Number(form.extra_qualifiers_count || DEFAULT_CHAMPIONSHIP.extra_qualifiers_count),
       total_qualifiers_f2: Number(form.total_qualifiers_f2 || DEFAULT_CHAMPIONSHIP.total_qualifiers_f2),
       ranking_max_championships: Number(form.ranking_max_championships || DEFAULT_CHAMPIONSHIP.ranking_max_championships),
+      average_control_enabled: form.average_control_enabled !== 'NO',
       participant_ids: isRanking ? [] : DEFAULT_CHAMPIONSHIP.participant_ids,
       participant_seeds: isRanking ? {} : DEFAULT_CHAMPIONSHIP.participant_seeds,
       status: 'DRAFT',
@@ -1189,7 +1244,7 @@ function AppShell({ auth }) {
     const cfg = { ...championship, total_qualifiers_f2: count * Number(championship.qualifiers_per_group || 0) + Number(championship.extra_qualifiers_count || 0), status: 'DEMO_READY' };
     const generatedGroups = generateGroups(cfg, enrolled);
     const groupMatches = autoFillMatches(generateRoundRobinMatches(cfg, generatedGroups), `${cfg.random_seed}-full-demo`);
-    const qualified = qualify(groupStandings(generatedGroups, groupMatches), cfg);
+    const qualified = qualify(groupStandings(generatedGroups, groupMatches, cfg), cfg);
     const koMatches = generateFullKnockoutDemo(cfg, qualified, groupMatches.length + 1, `${cfg.random_seed}-full-demo-ko`);
     const allMatches = scheduleMatches(cfg, [...groupMatches, ...koMatches]);
     setChampionship(cfg);
@@ -1237,8 +1292,8 @@ ${link}`);
         )
       ) : null,
       E('div', { className: 'sync-status' }, syncStatus),
-      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players, openChampionshipDashboard: (id) => loadChampionship(id, 'dashboard'), openPlayerHistory: setHistoryPlayerId }),
-      tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
+      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players, openChampionshipDashboard: (id) => loadChampionship(id, 'reports'), openPlayerHistory: setHistoryPlayerId }),
+      tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab, openPlayerHistory: setHistoryPlayerId }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
       tab === 'championships' && (uxMode === 'pro' ? E(ProChampionshipHub, { type: 'NORMAL', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) : E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship })),
       tab === 'rankingHub' && uxMode === 'pro' && E(ProChampionshipHub, { type: 'RANKING', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }),
       tab === 'players' && E(PlayersModule, shared),

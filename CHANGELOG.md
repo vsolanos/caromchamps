@@ -1,3 +1,10 @@
+## v6.3.0
+
+- ProV: ajustes de tabs en modo oscuro, links en Grand Dashboard/Ranking y mejoras del Dashboard de campeonato.
+- Face to Face: reposicionamiento dinámico de Final y campeón, conectores centrales y PDF al 85% relativo.
+- Estabilidad SPA local con hash navigation para refresh/forward/back.
+- Control de Promedios configurable por campeonato y planillas PDF con sizing reducido.
+
 ## v6.2.0
 
 - Correcciones ProV de modo oscuro, tabs, Grand Dashboard y Dashboard de campeonato.

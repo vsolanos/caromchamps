@@ -3,7 +3,7 @@ import { E, Card, Button, Badge, SectionTitle, EmptyState, Select } from '../com
 import { PdfControls, PdfDocument } from '../components/Print.js';
 import { PlayerHistoryTrigger } from '../components/PlayerHistory.js';
 import { startPdfPrint } from '../lib/print.js';
-import { calculateTotalQualifiers, fmtAvg, playerName, validateChampionship, generateGroups, generateRoundRobinMatches, autoFillMatches, groupStandings, qualify, num, getEligiblePlayers, isInternationalChampionship, matchCode, matchScore, matchDetailedScore, matchPlayerStats, matchDisplayStatus, playerInitials, formatDateEs } from '../lib/tournament.js';
+import { calculateTotalQualifiers, fmtAvg, usesAverageControl, playerName, validateChampionship, generateGroups, generateRoundRobinMatches, autoFillMatches, groupStandings, qualify, num, getEligiblePlayers, isInternationalChampionship, matchCode, matchScore, matchDetailedScore, matchPlayerStats, matchDisplayStatus, playerInitials, formatDateEs } from '../lib/tournament.js';
 
 function starPoints(cx, cy, outer, inner, arms = 5) {
   return Array.from({ length: arms * 2 }, (_, index) => {
@@ -75,15 +75,21 @@ function playerCell(player, championship) {
 }
 
 function standingsTable(rows, championship, seeds, allComplete) {
-  const headers = ['POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'PUNTOS', 'CLASIFICACIÓN'];
+  const avgEnabled = usesAverageControl(championship);
+  const headers = avgEnabled
+    ? ['POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'PUNTOS', 'CLASIFICACIÓN']
+    : ['POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'SM1', 'SM2', 'PUNTOS', 'CLASIFICACIÓN'];
   return E('div', { className: 'table-wrap' }, E('table', { className: 'group-standings-table' },
     E('thead', null, E('tr', null, headers.map((h) => E('th', { key: h }, h)))),
     E('tbody', null, rows.map((row) => E('tr', { key: row.player.player_id, className: isQualified(row, seeds, allComplete) ? 'qualified-row' : '' },
       E('td', null, row.group_position),
       E('td', null, playerCell(row.player, championship)),
       E('td', null, row.played), E('td', null, row.wins), E('td', null, row.draws), E('td', null, row.losses),
-      E('td', null, row.caroms), E('td', null, row.innings), E('td', null, row.s1), E('td', null, row.s2 || 0),
-      E('td', null, fmtAvg(row.avg)), E('td', null, row.points), E('td', null, classificationLabel(row, seeds, allComplete))
+      E('td', null, row.caroms),
+      avgEnabled ? E('td', null, row.innings) : null,
+      E('td', null, row.s1), E('td', null, row.s2 || 0),
+      avgEnabled ? E('td', null, fmtAvg(row.avg)) : null,
+      E('td', null, row.points), E('td', null, classificationLabel(row, seeds, allComplete))
     )))
   ));
 }
@@ -109,11 +115,15 @@ function assignmentTable(group, swapSelection = [], onGroupRowSelect = null, mut
   ));
 }
 
-function groupAgenda(group, matches, playersById) {
+function groupAgenda(group, matches, playersById, championship = {}) {
+  const avgEnabled = usesAverageControl(championship);
   const rows = matches.filter((m) => m.group_id === group.group_id).sort((a, b) => `${a.scheduled_date || ''} ${a.scheduled_time || ''} ${matchCode(a)}`.localeCompare(`${b.scheduled_date || ''} ${b.scheduled_time || ''} ${matchCode(b)}`));
   if (!rows.length) return E('p', { className: 'small' }, 'Sin partidas generadas para este grupo.');
+  const headers = avgEnabled
+    ? ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador 1', 'Jugador 2', 'Marcador', 'Entradas', 'Promedios', 'Estado']
+    : ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador 1', 'Jugador 2', 'Marcador', 'Estado'];
   return E('div', { className: 'table-wrap group-agenda-wrap', style: { marginTop: 12 } }, E('table', { className: 'group-agenda-table' },
-    E('thead', null, E('tr', null, ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador 1', 'Jugador 2', 'Marcador', 'Entradas', 'Promedios', 'Estado'].map((h) => E('th', { key: h }, h)))),
+    E('thead', null, E('tr', null, headers.map((h) => E('th', { key: h }, h)))),
     E('tbody', null, rows.map((m) => {
       const a = matchPlayerStats(m, 1);
       const b = matchPlayerStats(m, 2);
@@ -121,8 +131,8 @@ function groupAgenda(group, matches, playersById) {
         E('td', null, matchCode(m)), E('td', null, formatDateEs(m.scheduled_date)), E('td', null, m.scheduled_time || '-'), E('td', null, m.assigned_table || '-'),
         E('td', null, E(PlayerHistoryTrigger, { player: playersById[m.player1_id] })), E('td', null, E(PlayerHistoryTrigger, { player: playersById[m.player2_id] })),
         E('td', { className: 'agenda-score-cell' }, m.match_status === 'COMPLETED' ? matchScore(m) : '-'),
-        E('td', null, m.match_status === 'COMPLETED' ? `${a.innings}/${b.innings}` : '-'),
-        E('td', null, m.match_status === 'COMPLETED' ? `${a.avg}/${b.avg}` : '-'),
+        avgEnabled ? E('td', null, m.match_status === 'COMPLETED' ? `${a.innings}/${b.innings}` : '-') : null,
+        avgEnabled ? E('td', null, m.match_status === 'COMPLETED' ? `${a.avg}/${b.avg}` : '-') : null,
         E('td', { className: 'agenda-status-cell' }, E(Badge, { kind: m.match_status === 'COMPLETED' ? 'success' : m.schedule_conflict ? 'danger' : 'neutral' }, m.match_status === 'COMPLETED' ? 'Finalizada' : (m.schedule_conflict ? 'Conflicto' : matchDisplayStatus(m))))
       );
     }))
@@ -130,28 +140,34 @@ function groupAgenda(group, matches, playersById) {
 }
 
 function unifiedPhaseTable(standings, championship, seeds, allComplete) {
+  const avgEnabled = usesAverageControl(championship);
   const rows = standings.flatMap((group) => group.standings.map((row) => ({ ...row, group_name: group.group_name })))
-    .sort((a, b) => a.group_position - b.group_position || b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2);
+    .sort((a, b) => avgEnabled
+      ? a.group_position - b.group_position || b.points - a.points || (b.avg || 0) - (a.avg || 0) || b.s1 - a.s1 || b.s2 - a.s2
+      : a.group_position - b.group_position || b.points - a.points || b.wins - a.wins || a.losses - b.losses || b.caroms - a.caroms);
   if (!rows.length) return null;
-  const headers = ['ORDEN', 'GRUPO', 'POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'PUNTOS', 'CLASIFICACIÓN'];
+  const headers = avgEnabled
+    ? ['ORDEN', 'GRUPO', 'POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'PUNTOS', 'CLASIFICACIÓN']
+    : ['ORDEN', 'GRUPO', 'POS', 'JUGADOR', 'PJ', 'PG', 'PE', 'PP', 'CAR', 'SM1', 'SM2', 'PUNTOS', 'CLASIFICACIÓN'];
+  const renderRow = (row, index, offset) => E('tr', { key: `${row.group_name}-${row.player.player_id}`, className: isQualified(row, seeds, allComplete) ? 'qualified-row' : '' },
+    E('td', null, offset + index + 1), E('td', null, row.group_name), E('td', null, row.group_position), E('td', null, playerCell(row.player, championship)),
+    E('td', null, row.played), E('td', null, row.wins), E('td', null, row.draws), E('td', null, row.losses), E('td', null, row.caroms),
+    avgEnabled ? E('td', null, row.innings) : null,
+    E('td', null, row.s1), E('td', null, row.s2 || 0),
+    avgEnabled ? E('td', null, fmtAvg(row.avg)) : null,
+    E('td', null, row.points), E('td', null, classificationLabel(row, seeds, allComplete))
+  );
   const renderTable = (items, offset) => E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', null,
     E('thead', null, E('tr', null, headers.map((h) => E('th', { key: h }, h)))),
-    E('tbody', null, items.map((row, index) => E('tr', { key: `${row.group_name}-${row.player.player_id}`, className: isQualified(row, seeds, allComplete) ? 'qualified-row' : '' },
-      E('td', null, offset + index + 1), E('td', null, row.group_name), E('td', null, row.group_position), E('td', null, playerCell(row.player, championship)),
-      E('td', null, row.played), E('td', null, row.wins), E('td', null, row.draws), E('td', null, row.losses),
-      E('td', null, row.caroms), E('td', null, row.innings), E('td', null, row.s1), E('td', null, row.s2 || 0),
-      E('td', null, fmtAvg(row.avg)), E('td', null, row.points), E('td', null, classificationLabel(row, seeds, allComplete))
-    )))
+    E('tbody', null, items.map((row, index) => renderRow(row, index, offset)))
   ));
   const chunkSize = 18;
   const chunks = [];
   for (let i = 0; i < rows.length; i += chunkSize) chunks.push(rows.slice(i, i + chunkSize));
-  return E('div', { className: 'groups-final-order-print' },
-    chunks.map((chunk, pageIndex) => E(Card, { key: `final-order-${pageIndex}`, className: `groups-final-order-page ${pageIndex > 0 ? 'groups-final-order-continuation' : ''}`.trim() },
-      E(SectionTitle, { title: pageIndex === 0 ? 'Ordenamiento final fase de grupos' : 'Ordenamiento final fase de grupos · continuación', subtitle: 'Incluye clasificados y no clasificados con las mismas columnas de posiciones.' }),
-      renderTable(chunk, pageIndex * chunkSize)
-    ))
-  );
+  return E('div', { className: 'groups-final-order-print' }, chunks.map((chunk, pageIndex) => E(Card, { key: `final-order-${pageIndex}`, className: `groups-final-order-page ${pageIndex > 0 ? 'groups-final-order-continuation' : ''}`.trim() },
+    E('div', { className: 'section-title' }, E('h2', null, pageIndex === 0 ? 'Orden general de fase de grupos' : 'Orden general de fase de grupos · continuación'), E('p', null, 'Clasificación consolidada según criterios del campeonato.')),
+    renderTable(chunk, pageIndex * chunkSize)
+  )));
 }
 
 function MiniStat({ label, value }) {
@@ -159,7 +175,8 @@ function MiniStat({ label, value }) {
 }
 
 export function GroupsModule({ championship, setChampionship, players, groups, setGroups, matches, setMatches, seeds, setSeeds, audit }) {
-  const standings = useMemo(() => groupStandings(groups, matches), [groups, matches]);
+  const avgEnabled = usesAverageControl(championship);
+  const standings = useMemo(() => groupStandings(groups, matches, championship), [groups, matches, championship]);
   const enrolled = getEligiblePlayers(championship, players);
   const playersById = Object.fromEntries(players.map((p) => [p.player_id, p]));
   const expectedGroups = Math.max(1, Math.ceil(enrolled.length / num(championship.preferred_group_size, 4)));
@@ -356,7 +373,7 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
       E('div', { className: 'group-report-heading' }, E('div', null, E('p', { className: 'group-report-kicker' }, `Número de grupo: ${group.group_number}`), E('h3', { style: { margin: 0 } }, group.group_name)), E(Badge, { kind: 'info' }, `${group.players.length} jugadores`)),
       E('details', { open: true, style: { marginTop: 10 } }, E('summary', { className: 'player-name' }, 'Conformación del grupo'), assignmentTable(group, swapSelection, handleGroupRowSelect, mutationMode)),
       E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name' }, 'Tabla de posiciones'), standingsTable(group.standings, championship, displaySeeds, allComplete)),
-      E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name' }, 'Agenda del grupo'), groupAgenda(group, matches, playersById))
+      E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name' }, 'Agenda del grupo'), groupAgenda(group, matches, playersById, championship))
     )));
 
   return E('div', { className: 'grid groups-export-root' },

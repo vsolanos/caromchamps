@@ -1,10 +1,21 @@
-# CaromChamps v6.2.0
+# CaromChamps v6.3.0
+
+## v6.3.0
+
+- ProV: rollback del fondo azul claro del panel completo de tabs en modo oscuro; cada flecha del proceso usa fondo azul.
+- Grand Dashboard: links de campeonatos y puntos AVG hacia el tab Reportes; Top de jugadores abre historial.
+- Dashboard de campeonato: AVG final integrado en la gráfica por fase y Top 7 AVG del torneo con historial.
+- Llaves Face to Face: Final reposicionada según semis/conectores, campeón lateral superior y PDF reducido para una página.
+- Navegación local: soporte hash para refrescar, forward/back y reapertura de tabs sin perder conexión SPA.
+- Nuevo parámetro Control de Promedios Si/No con captura sin entradas/promedios cuando está desactivado.
+- Planillas PDF: reducción de sizing 10% para evitar primera planilla en dos páginas.
+
 
 Plataforma web para gestión integral de campeonatos de billar carambola a 3 bandas FECOBI / ASOBIGRIE: jugadores, campeonatos normales, campeonatos ranking, grupos, calendario, captura de partidas, llaves/brackets, reportes PDF/Excel, ranking, cierre y auditoría.
 
 ## Versión activa
 
-**CaromChamps v6.1.0** refina la nueva **Interface ProV** como experiencia predeterminada, manteniendo disponibles las otras dos interfaces para transición controlada:
+**CaromChamps v6.3.0** refina la nueva **Interface ProV** como experiencia predeterminada, manteniendo disponibles las otras dos interfaces para transición controlada:
 
 1. **Interface ProV** — nueva interface predeterminada con Grand Dashboard, menú izquierdo simplificado y tabs internos del campeonato.
 2. **Interface IA** — interface guiada introducida en v5.9.0.
@@ -38,6 +49,27 @@ npm.cmd run dev:clean
 ```
 
 ## Historial de versiones consolidadas
+
+
+### v6.3.0 — ProV, Control de Promedios y estabilidad SPA
+
+- Rollback del fondo azul claro del panel completo de tabs ProV en modo oscuro; las flechas del proceso quedan con fondo azul.
+- Grand Dashboard: gráficos enlazados al tab Reportes del campeonato y Top de jugadores con historial.
+- Dashboard del campeonato: AVG final integrado a gráfica por fase y Top 7 de AVG del torneo.
+- Llaves Face to Face: Final y Campeón reposicionados dinámicamente respecto a semis/conectores; PDF reducido para una página.
+- Navegación local estabilizada con hash para refresh, back/forward y reapertura sin perder el estado del SPA.
+- Nuevo parámetro Control de Promedios Sí/No; al desactivarlo se ocultan entradas/promedios en captura y reportes principales.
+- Planillas PDF: sizing reducido 10% para evitar que la primera planilla se divida en dos páginas.
+- `package.json` actualizado a versión `6.3.0`.
+
+### v6.2.0 — ProV, Doble Fase Grupos y ajustes de Face to Face
+
+- Ajustes de tabs ProV, modo oscuro y links desde Grand Dashboard/Ranking.
+- Tab Reportes agregado al panel ProV.
+- Nueva funcionalidad Doble Fase Grupos con tab Grupos F2.
+- Bloqueos de Setup al clasificar/cerrar campeonato.
+- Llaves Face to Face con reposicionamiento de Final y Campeón.
+- `package.json` actualizado a versión `6.2.0`.
 
 
 ### v6.1.0 — Ajustes ProV, Wizard overlay, Ranking Dashboard y Face to Face

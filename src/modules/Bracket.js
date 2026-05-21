@@ -22,6 +22,7 @@ import {
   roundDisplayName,
   resolveMatchPlayer,
   fmtAvg,
+  usesAverageControl,
   num
 } from '../lib/tournament.js';
 
@@ -123,15 +124,15 @@ function Avatar({ player }) {
   return E('div', { className: 'bracket-avatar placeholder' }, playerInitials(player));
 }
 
-function playerMetricRow(stats) {
+function playerMetricRow(stats, avgEnabled = true) {
   return E('div', { className: 'bracket-stat-row' },
     E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'CAR'), ' ', stats.caroms),
-    E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'ENT'), ' ', stats.innings),
-    E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'PROM'), ' ', stats.avg)
+    avgEnabled ? E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'ENT'), ' ', stats.innings) : null,
+    avgEnabled ? E('span', { className: 'bracket-metric-item' }, E('b', { className: 'bracket-metric-label' }, 'PROM'), ' ', stats.avg) : null
   );
 }
 
-function PlayerLine({ match, playerMap, side, compact = false, allMatches = [] }) {
+function PlayerLine({ match, playerMap, side, compact = false, allMatches = [], championship = {} }) {
   const stats = matchPlayerStats(match, side);
   const resolved = resolveMatchPlayer(match, side, allMatches, playerMap);
   const player = resolved.player || playerMap[stats.player_id];
@@ -141,14 +142,14 @@ function PlayerLine({ match, playerMap, side, compact = false, allMatches = [] }
     E(Avatar, { player }),
     E('div', { className: 'bracket-player-info' },
       E('div', { className: 'bracket-name-line' }, E(Flag, { code: player?.country_iso }), E('b', null, player ? E(PlayerHistoryTrigger, { player }) : resolved.label)),
-      playerMetricRow(stats),
+      playerMetricRow(stats, usesAverageControl(championship)),
       compact ? null : E('div', { className: 'bracket-serie-row' }, `SM1 ${stats.s1} · SM2 ${stats.s2}${stats.penalties ? ` · PEN ${stats.penalties}` : ''}`)
     ),
     E('div', { className: `bracket-score ${stats.is_winner ? 'winner' : ''}` }, stats.caroms || '-')
   );
 }
 
-function MatchCard({ match, playerMap, allMatches = [], roundIndex = 0, connectorHeight = 0, top = 0, cardHeight = 138, isCurrentRound = false }) {
+function MatchCard({ match, playerMap, allMatches = [], roundIndex = 0, connectorHeight = 0, top = 0, cardHeight = 138, isCurrentRound = false, championship = {} }) {
   const winnerName = match.winner_id ? playerName(playerMap[match.winner_id]) : '';
   const cardStyle = {
     top: `${top}px`,
@@ -165,13 +166,13 @@ function MatchCard({ match, playerMap, allMatches = [], roundIndex = 0, connecto
       E('div', null,
         E('b', null, matchCode(match)),
         E('span', { className: 'continuous-round-label' }, ` · ${matchRoundLabel(match)}`),
-        E('p', { className: 'continuous-match-meta' }, `Orden ${match.bracket_order || '-'} · ${matchDetailedScore(match)}`)
+        E('p', { className: 'continuous-match-meta' }, `Orden ${match.bracket_order || '-'} · ${matchDetailedScore(match, championship)}`)
       ),
       E(Badge, { kind: match.match_status === 'COMPLETED' ? 'success' : 'neutral' }, matchDisplayStatus(match))
     ),
     E('div', { className: 'continuous-player-stack' },
-      E(PlayerLine, { match, playerMap, side: 1, allMatches }),
-      E(PlayerLine, { match, playerMap, side: 2, allMatches })
+      E(PlayerLine, { match, playerMap, side: 1, allMatches, championship }),
+      E(PlayerLine, { match, playerMap, side: 2, allMatches, championship })
     ),
     winnerName ? E('div', { className: 'continuous-winner' }, `Ganador: ${winnerName}`) : null
   );
@@ -520,7 +521,7 @@ function FaceConnectorSvg({ layout }) {
   );
 }
 
-function FaceRoundColumn({ round, rows, playerMap, matches, layout }) {
+function FaceRoundColumn({ round, rows, playerMap, matches, layout, championship }) {
   return E('div', { className: `face-round-column face-round-key-${String(round).toLowerCase()} face-absolute-column`, style: { left: `${layout.columns.find((column) => column.round === round)?.x || 0}px`, width: `${layout.columnWidth}px`, minHeight: `${layout.height}px` } },
     E('div', { className: 'round-premium-title face-round-title' },
       E('h3', null, shortRound(round).toUpperCase()),
@@ -536,7 +537,8 @@ function FaceRoundColumn({ round, rows, playerMap, matches, layout }) {
             allMatches: matches,
             cardHeight: faceCardHeight(round),
             roundIndex: round === 'R0' ? 0 : 1,
-            connectorHeight: 0
+            connectorHeight: 0,
+            championship
           })
         );
       })
@@ -544,10 +546,10 @@ function FaceRoundColumn({ round, rows, playerMap, matches, layout }) {
   );
 }
 
-function FaceBranch({ layout, playerMap, matches }) {
+function FaceBranch({ layout, playerMap, matches, championship }) {
   return E('div', { className: `face-branch face-${layout.side}-branch face-tree-branch`, style: { width: `${layout.width}px`, minWidth: `${layout.width}px`, height: `${layout.height}px` } },
     E(FaceConnectorSvg, { layout }),
-    layout.columns.map(({ round, rows }) => E(FaceRoundColumn, { key: `${layout.side}-${round}`, round, rows, playerMap, matches, layout }))
+    layout.columns.map(({ round, rows }) => E(FaceRoundColumn, { key: `${layout.side}-${round}`, round, rows, playerMap, matches, layout, championship }))
   );
 }
 
@@ -580,16 +582,19 @@ function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalO
   );
 }
 
-function FaceToFaceView({ matches, playerMap }) {
+function FaceToFaceView({ matches, playerMap, championship = {} }) {
   const final = matches.find((m) => matchRoundKey(m) === 'F');
   const leftLayout = buildFaceBranchLayout(matches, final, 'left');
   const rightLayout = buildFaceBranchLayout(matches, final, 'right');
   const hasR0 = matches.some((m) => matchRoundKey(m) === 'R0');
   const baseStageHeight = Math.max(leftLayout.height, rightLayout.height, 640);
-  // v5.7: move the final down so it breathes away from semifinals. The offset
-  // is close to two face cards, matching the approved visual feedback.
-  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 0.46) : 0;
-  const championVerticalGap = final?.winner_id ? 120 : 0;
+  const semiCenters = [
+    final?.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null,
+    final?.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null
+  ].filter(Boolean).map((position) => position.y + position.height / 2);
+  const targetCenter = semiCenters.length ? semiCenters.reduce((sum, value) => sum + value, 0) / semiCenters.length : 220;
+  const finalVerticalOffset = final ? Math.max(0, Math.round(targetCenter - 36 - 146)) : 0;
+  const championVerticalGap = final?.winner_id ? 60 : 0;
   const stageHeight = baseStageHeight + finalVerticalOffset + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
@@ -598,7 +603,7 @@ function FaceToFaceView({ matches, playerMap }) {
       E('span', null, hasR0 ? 'Incluye R0 y dibuja conexiones reales por fuentes de partida, adaptadas desde la visualización continua.' : 'Dibuja conexiones reales por fuentes de partida, adaptadas desde la visualización continua.')
     ),
     E('div', { className: 'face-grid face-grid-balanced face-tree-grid', style: { '--face-stage-height': `${stageHeight}px`, '--face-final-offset': `${finalVerticalOffset}px` } },
-      E(FaceBranch, { layout: leftLayout, playerMap, matches }),
+      E(FaceBranch, { layout: leftLayout, playerMap, matches, championship }),
       E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
         E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }),
         final ? E('div', { className: 'face-final-wrap face-tree-final-wrap face-final-up-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
@@ -607,7 +612,7 @@ function FaceToFaceView({ matches, playerMap }) {
             E('span', null, '2 jugadores')
           ),
           E('div', { className: 'face-final-row' },
-            E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292 }),
+            E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292, championship }),
             final.winner_id ? E('div', { className: 'face-champion-node face-champion-side-final' },
               E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
               E('div', { className: 'trophy' }, '🏆'),
@@ -617,7 +622,7 @@ function FaceToFaceView({ matches, playerMap }) {
           )
         ) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })
       ),
-      E(FaceBranch, { layout: rightLayout, playerMap, matches })
+      E(FaceBranch, { layout: rightLayout, playerMap, matches, championship })
     )
   );
 }
@@ -794,7 +799,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       allElimination.length && canZoomBracket ? E('div', { className: 'bracket-zoom-viewport', style: { '--visual-zoom': visualZoom, '--visual-zoom-width': `${100 / visualZoom}%` } },
         E('div', { className: 'bracket-zoom-content' },
           view === 'continuous' ? E(ContinuousView, { matches: allElimination, playerMap }) : null,
-          view === 'face' ? E(FaceToFaceView, { matches: allElimination, playerMap }) : null
+          view === 'face' ? E(FaceToFaceView, { matches: allElimination, playerMap, championship }) : null
         )
       ) : null
       )
