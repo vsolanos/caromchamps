@@ -15,12 +15,12 @@
     "start:preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.86.0",
     "@vitejs/plugin-react": "6.0.0",
+    "jsqr": "^1.4.0",
+    "qrcode.react": "^4.2.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "vite": "6.0.0",
-    "qrcode.react": "^4.2.0",
-    "jsqr": "^1.4.0",
-    "@supabase/supabase-js": "^2.86.0"
+    "vite": "^8.0.14"
   }
 }
