@@ -588,8 +588,8 @@ function FaceToFaceView({ matches, playerMap }) {
   const baseStageHeight = Math.max(leftLayout.height, rightLayout.height, 640);
   // v5.7: move the final down so it breathes away from semifinals. The offset
   // is close to two face cards, matching the approved visual feedback.
-  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 1.82) : 0;
-  const championVerticalGap = final?.winner_id ? 270 : 0;
+  const finalVerticalOffset = final ? Math.round(faceCardHeight('SF') * 0.46) : 0;
+  const championVerticalGap = final?.winner_id ? 120 : 0;
   const stageHeight = baseStageHeight + finalVerticalOffset + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
@@ -601,18 +601,20 @@ function FaceToFaceView({ matches, playerMap }) {
       E(FaceBranch, { layout: leftLayout, playerMap, matches }),
       E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
         E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }),
-        final ? E('div', { className: 'face-final-wrap face-tree-final-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
+        final ? E('div', { className: 'face-final-wrap face-tree-final-wrap face-final-up-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
           E('div', { className: 'round-premium-title face-round-title' },
             E('h3', null, 'FINAL'),
             E('span', null, '2 jugadores')
           ),
-          E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292 }),
-          final.winner_id ? E('div', { className: 'face-champion-node face-champion-under-final' },
-            E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
-            E('div', { className: 'trophy' }, '🏆'),
-            E('span', null, 'Campeón / Ganador'),
-            E('b', null, playerName(playerMap[final.winner_id]))
-          ) : null
+          E('div', { className: 'face-final-row' },
+            E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292 }),
+            final.winner_id ? E('div', { className: 'face-champion-node face-champion-side-final' },
+              E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
+              E('div', { className: 'trophy' }, '🏆'),
+              E('span', null, 'Campeón / Ganador'),
+              E('b', null, playerName(playerMap[final.winner_id]))
+            ) : null
+          )
         ) : E(EmptyState, { title: 'Final pendiente', message: 'Genere rondas hasta la final.' })
       ),
       E(FaceBranch, { layout: rightLayout, playerMap, matches })

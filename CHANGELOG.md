@@ -1,3 +1,11 @@
+## v6.2.0
+
+- Correcciones ProV de modo oscuro, tabs, Grand Dashboard y Dashboard de campeonato.
+- Enlaces operativos desde gráficos y ranking a dashboards/reportes/historial.
+- Bloqueo de Setup posterior a clasificación/cierre en todas las interfaces.
+- Face to Face: Final y campeón reposicionados; PDF ajustado a una página.
+- Nueva funcionalidad Doble Fase Grupos con tab Grupos F2 y flujo de clasificación hacia KO.
+
 
 ## v6.1.0
 

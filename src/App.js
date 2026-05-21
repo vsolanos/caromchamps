@@ -7,7 +7,7 @@ import { SharedChampionshipView } from './components/SharedView.js';
 import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
 import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
-import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg } from './lib/tournament.js';
+import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg, calculateTotalQualifiers, num } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
 import { PlayersModule } from './modules/Players.js';
 import { SetupModule } from './modules/Setup.js';
@@ -43,6 +43,7 @@ function sharedTokenFromLocation() {
 
 const RANKING_BLOCKED_TABS = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
 const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
+const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
@@ -79,9 +80,11 @@ const PRO_WORKSPACE_TABS = [
   ['schedule', 'Calendario', '📅'],
   ['matches', 'Partidas', '●'],
   ['ko', 'Llaves', '⑂'],
-  ['close', 'Cierre', '✓']
+  ['close', 'Cierre', '✓'],
+  ['reports', 'Reportes', '▤']
 ];
-const PRO_WORKSPACE_TAB_IDS = new Set(PRO_WORKSPACE_TABS.map(([id]) => id));
+const PRO_DOUBLE_GROUPS_TAB = ['groupsF2', 'Grupos F2', '▦'];
+const PRO_WORKSPACE_TAB_IDS = new Set([...PRO_WORKSPACE_TABS.map(([id]) => id), 'groupsF2']);
 
 function getTabMeta(id) {
   const found = NAV_TABS.find(([tabId]) => tabId === id);
@@ -572,8 +575,8 @@ function averageFromMatches(matches) {
 }
 
 function phaseAverageSeries(matches) {
-  const order = ['GROUPS', 'PRE_ELIMINATION', 'KO'];
-  const label = { GROUPS: 'Grupos', PRE_ELIMINATION: 'R0', KO: 'KO' };
+  const order = ['GROUPS', 'GROUPS_F2', 'PRE_ELIMINATION', 'KO'];
+  const label = { GROUPS: 'Grupos', GROUPS_F2: 'Grupos F2', PRE_ELIMINATION: 'R0', KO: 'KO' };
   let cumulativeCaroms = 0;
   let cumulativeInnings = 0;
   return order.map((phase) => {
@@ -588,7 +591,7 @@ function phaseAverageSeries(matches) {
   });
 }
 
-function MiniLineChart({ data, title, valueFormatter = (v) => String(v) }) {
+function MiniLineChart({ data, title, valueFormatter = (v) => String(v), onPointClick }) {
   const rows = data?.length ? data : [{ label: '-', value: 0 }];
   const width = 620;
   const height = 220;
@@ -605,8 +608,8 @@ function MiniLineChart({ data, title, valueFormatter = (v) => String(v) }) {
     E('h2', null, title),
     E('svg', { viewBox: `0 0 ${width} ${height}`, role: 'img', 'aria-label': title },
       E('polyline', { points: points.map((p) => `${p.x},${p.y}`).join(' '), fill: 'none', stroke: 'currentColor', strokeWidth: 4, strokeLinecap: 'round', strokeLinejoin: 'round' }),
-      points.map((p) => E('g', { key: p.label },
-        E('circle', { cx: p.x, cy: p.y, r: 5 }),
+      points.map((p) => E('g', { key: p.label, className: onPointClick || p.onClick ? 'chart-clickable' : '', onClick: () => (p.onClick ? p.onClick(p) : onPointClick?.(p)), role: onPointClick || p.onClick ? 'button' : undefined, tabIndex: onPointClick || p.onClick ? 0 : undefined },
+        E('circle', { cx: p.x, cy: p.y, r: 6 }),
         E('text', { x: p.x, y: height - 6, textAnchor: 'middle' }, p.label),
         E('text', { x: p.x, y: Math.max(14, p.y - 12), textAnchor: 'middle', className: 'chart-value' }, valueFormatter(p.value))
       ))
@@ -619,7 +622,7 @@ function MiniBarChart({ data, title, valueFormatter = (v) => String(v) }) {
   const max = Math.max(...rows.map((d) => appNumber(d.value, 0)), 1);
   return E(Card, { className: 'pro-chart-card pro-bar-chart' },
     E('h2', null, title),
-    E('div', { className: 'pro-bars' }, rows.length ? rows.map((row) => E('div', { key: row.label, className: 'pro-bar-row' },
+    E('div', { className: 'pro-bars' }, rows.length ? rows.map((row) => E('div', { key: row.label, className: `pro-bar-row ${row.onClick ? 'chart-clickable' : ''}`, onClick: row.onClick, role: row.onClick ? 'button' : undefined, tabIndex: row.onClick ? 0 : undefined },
       E('span', { title: row.fullLabel || row.label }, row.label),
       E('div', { className: 'pro-bar-track' }, E('i', { style: { width: `${Math.max(3, (appNumber(row.value, 0) / max) * 100)}%` } })),
       E('b', null, valueFormatter(row.value))
@@ -627,7 +630,7 @@ function MiniBarChart({ data, title, valueFormatter = (v) => String(v) }) {
   );
 }
 
-function GrandDashboard({ championships, players }) {
+function GrandDashboard({ championships, players, openChampionshipDashboard, openPlayerHistory }) {
   const normalRows = normalChampionshipRows(championships);
   const rankingRows = rankingChampionshipRows(championships);
   const uniquePlayers = new Set(players.map((p) => p.player_id));
@@ -637,8 +640,9 @@ function GrandDashboard({ championships, players }) {
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {})).map(([label, value]) => ({ label, value }));
-  const avgByChampionship = normalRows.map((row, index) => ({ label: `C${index + 1}`, fullLabel: row.name, value: averageFromMatches(row.matches || []) }));
-  const championshipsByPlayers = normalRows.map((row) => ({ label: row.name || row.championship?.name || row.id, fullLabel: row.name || row.championship?.name || row.id, value: row.championship?.participant_ids?.length || getEligiblePlayers(row.championship || {}, players).length || 0 })).sort((a, b) => b.value - a.value);
+  const codeByChampionship = Object.fromEntries(normalRows.map((row, index) => [row.id, `C${index + 1}`]));
+  const avgByChampionship = normalRows.map((row, index) => ({ label: `C${index + 1}`, fullLabel: row.name, value: averageFromMatches(row.matches || []), onClick: () => openChampionshipDashboard?.(row.id) }));
+  const championshipsByPlayers = normalRows.map((row) => ({ label: `${codeByChampionship[row.id] || ''} · ${row.name || row.championship?.name || row.id}`, fullLabel: row.name || row.championship?.name || row.id, value: row.championship?.participant_ids?.length || getEligiblePlayers(row.championship || {}, players).length || 0, onClick: () => openChampionshipDashboard?.(row.id) })).sort((a, b) => b.value - a.value);
   const playerBest = new Map();
   normalRows.forEach((row) => completedMatchesOf(row).forEach((m) => {
     [1, 2].forEach((side) => {
@@ -653,7 +657,7 @@ function GrandDashboard({ championships, players }) {
   }));
   const topPlayers = [...playerBest.values()].sort((a, b) => b.value - a.value).slice(0, 7).map((row) => {
     const player = players.find((p) => p.player_id === row.playerId);
-    return { label: playerName(player).slice(0, 18), fullLabel: playerName(player), value: row.value };
+    return { label: playerName(player).slice(0, 18), fullLabel: playerName(player), value: row.value, onClick: () => openPlayerHistory?.(row.playerId) };
   });
   const totalMatches = normalRows.reduce((sum, row) => sum + (row.matches?.length || 0), 0);
   const completedMatches = normalRows.reduce((sum, row) => sum + completedMatchesOf(row).length, 0);
@@ -696,12 +700,17 @@ function GrandDashboard({ championships, players }) {
 }
 
 function ProWorkspaceTabs({ tab, setTab, championship }) {
-  const isRanking = (championship?.championship_type || 'NORMAL') === 'RANKING';
-  const tabs = isRanking ? [['dashboard', 'Dashboard', '⌂'], ['setup', 'Campeonato', '⚙'], ['ranking', 'Ranking', '★']] : PRO_WORKSPACE_TABS;
+  const type = championship?.championship_type || 'NORMAL';
+  const isRanking = type === 'RANKING';
+  const isDoubleGroups = type === 'DOBLE_FASE_GRUPOS';
+  const showGroupsF2 = isDoubleGroups && (championship?.status === 'GROUPS_F2_READY' || championship?.status === 'GROUPS_F2_CLOSED' || Array.isArray(championship?.groups_f2));
+  const tabs = isRanking
+    ? [['dashboard', 'Dashboard', '⌂'], ['setup', 'Campeonato', '⚙'], ['ranking', 'Ranking', '★'], ['reports', 'Reportes', '▤']]
+    : PRO_WORKSPACE_TABS.flatMap((item) => item[0] === 'groups' && showGroupsF2 ? [item, PRO_DOUBLE_GROUPS_TAB] : [item]);
   return E(Card, { className: 'pro-workspace-tabs-card pro-workspace-tabs-sticky' },
     E('div', { className: 'pro-workspace-title' },
       E('div', null, E('span', { className: 'ux-kicker' }, 'Campeonato activo'), E('h2', null, championship?.name || 'Sin campeonato seleccionado')),
-      E(Badge, { kind: isRanking ? 'warning' : 'info' }, isRanking ? 'RANKING' : 'NORMAL')
+      E(Badge, { kind: isRanking ? 'warning' : isDoubleGroups ? 'success' : 'info' }, isRanking ? 'RANKING' : isDoubleGroups ? 'DOBLE FASE GRUPOS' : 'NORMAL')
     ),
     E('div', { className: 'pro-workspace-tabs pro-process-tabs' }, tabs.map(([id, label, icon], index) => E('button', { key: id, type: 'button', className: `${tab === id ? 'active' : ''} ${index < tabs.length - 1 ? 'has-next' : ''}`, onClick: () => setTab(id) }, E('span', { className: 'pro-tab-index' }, index + 1), E('span', { className: 'pro-tab-icon' }, icon), E('b', null, label))))
   );
@@ -709,7 +718,7 @@ function ProWorkspaceTabs({ tab, setTab, championship }) {
 
 function ChampionshipAvgByPhaseChart({ championship, matches }) {
   if ((championship?.championship_type || 'NORMAL') === 'RANKING') return null;
-  return E('div', { className: 'pro-dashboard-chart-small' }, E(MiniLineChart, { data: phaseAverageSeries(matches), title: 'AVG general acumulado por fase', valueFormatter: (v) => fmtAvg(v) }));
+  return E('div', { className: 'pro-dashboard-chart-full' }, E(MiniLineChart, { data: phaseAverageSeries(matches), title: 'AVG general acumulado por fase', valueFormatter: (v) => fmtAvg(v) }));
 }
 
 function ProPendingMatchesList({ matches, players }) {
@@ -733,7 +742,6 @@ function ProPendingMatchesList({ matches, players }) {
 
 function ProChampionshipDashboard({ championship, players, groups, matches, seeds, championships, setTab }) {
   return E('div', { className: 'grid pro-championship-dashboard' },
-    E(UxActionCenter, { championship, players, groups, matches, seeds, championships, setTab }),
     E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }),
     E(ProPendingMatchesList, { matches, players }),
     E(ChampionshipAvgByPhaseChart, { championship, matches })
@@ -766,7 +774,7 @@ function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
     E('div', { className: 'ux-stepper pro-wizard-steps' }, steps.map((label, index) => E('button', { key: label, className: `ux-step ${index === step ? 'active' : index < step ? 'done' : ''}`, onClick: () => setStep(index) }, E('span', null, index + 1), E('b', null, label)))),
     step === 0 ? E('div', { className: 'grid grid-2 pro-form-grid' },
       E('label', null, 'Nombre', E('input', { value: form.name, onChange: (e) => update('name', e.target.value) })),
-      E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: true, onChange: (e) => update('championship_type', e.target.value) }, E('option', { value: 'NORMAL' }, 'Normal'), E('option', { value: 'RANKING' }, 'Ranking'))),
+      E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: type === 'RANKING', onChange: (e) => update('championship_type', e.target.value) }, type === 'RANKING' ? [E('option', { key: 'RANKING', value: 'RANKING' }, 'Ranking')] : [E('option', { key: 'NORMAL', value: 'NORMAL' }, 'Normal'), E('option', { key: 'DOBLE_FASE_GRUPOS', value: 'DOBLE_FASE_GRUPOS' }, 'Doble Fase Grupos')])),
       E('label', null, 'División', E('select', { value: form.division_filter, onChange: (e) => update('division_filter', e.target.value) }, ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL', 'NA'].map((value) => E('option', { key: value, value }, value)))),
       E('label', null, 'Estado inicial', E('input', { value: 'DRAFT', disabled: true }))
     ) : null,
@@ -832,6 +840,100 @@ function ProChampionshipHub({ type, championships, activeId, loadChampionship, c
   );
 }
 
+
+function GroupsF2Module({ championship, setChampionship, players, matches, setMatches, seeds, setSeeds, audit }) {
+  const firstPhaseSeeds = Array.isArray(championship.seeds_f1) && championship.seeds_f1.length ? championship.seeds_f1 : seeds;
+  const qualifiedPlayers = (firstPhaseSeeds || []).map((seed) => seed.player || players.find((p) => p.player_id === seed.player_id || p.player_id === seed.player?.player_id)).filter(Boolean);
+  const f2Settings = {
+    preferred_group_size: championship.f2_settings?.preferred_group_size || championship.preferred_group_size || 4,
+    group_generation_mode: championship.f2_settings?.group_generation_mode || championship.group_generation_mode || 'SEEDED_RANDOM',
+    qualifiers_per_group: championship.f2_settings?.qualifiers_per_group || championship.qualifiers_per_group || 2,
+    extra_qualifier_position: championship.f2_settings?.extra_qualifier_position || championship.extra_qualifier_position || 3,
+    extra_qualifiers_count: championship.f2_settings?.extra_qualifiers_count ?? championship.extra_qualifiers_count ?? 0,
+    total_qualifiers_f2: championship.f2_settings?.total_qualifiers_f2 || championship.total_qualifiers_f2 || 8,
+    random_seed: championship.f2_settings?.random_seed || `${championship.random_seed || 'f2'}-f2`
+  };
+  const [form, setForm] = useState(f2Settings);
+  const groupsF2 = Array.isArray(championship.groups_f2) ? championship.groups_f2 : [];
+  const matchesF2 = (matches || []).filter((m) => m.phase === 'GROUPS_F2');
+  const standingsF2 = groupStandings(groupsF2, matchesF2);
+  const pending = matchesF2.filter((m) => m.match_status !== 'COMPLETED');
+  const patch = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const f2ChampionshipConfig = {
+    ...championship,
+    ...form,
+    championship_type: 'NORMAL',
+    participant_ids: qualifiedPlayers.map((p) => p.player_id),
+    participant_seeds: Object.fromEntries(qualifiedPlayers.map((p, index) => [p.player_id, index + 1])),
+    total_qualifiers_f2: Number(form.total_qualifiers_f2 || championship.total_qualifiers_f2 || 8)
+  };
+  const generateF2 = () => {
+    if (championship.championship_type !== 'DOBLE_FASE_GRUPOS') return alert('Grupos F2 solo aplica para campeonatos tipo Doble Fase Grupos.');
+    if (!qualifiedPlayers.length) return alert('Primero debe clasificar la primera fase de grupos.');
+    if (groupsF2.length && !window.confirm('Ya existen Grupos F2. Regenerarlos eliminará partidas y clasificados de esta fase. ¿Desea continuar?')) return;
+    const generatedGroups = generateGroups(f2ChampionshipConfig, qualifiedPlayers).map((group, index) => ({
+      ...group,
+      group_id: `F2-${group.group_id || index + 1}`,
+      group_name: `F2-${group.group_name || `Grupo ${index + 1}`}`,
+      group_phase: 'GROUPS_F2'
+    }));
+    const startNumber = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
+    const generatedMatches = generateRoundRobinMatches(f2ChampionshipConfig, generatedGroups, startNumber).map((match) => ({
+      ...match,
+      phase: 'GROUPS_F2',
+      group_phase: 'GROUPS_F2',
+      match_status: match.match_status || 'CREATED'
+    }));
+    setChampionship({ ...championship, groups_f2: generatedGroups, f2_settings: form, status: 'GROUPS_F2_READY', seeds_f1: firstPhaseSeeds });
+    setMatches([...(matches || []).filter((m) => m.phase !== 'GROUPS_F2' && m.phase !== 'PRE_ELIMINATION' && m.phase !== 'KO'), ...generatedMatches]);
+    setSeeds([]);
+    audit?.('GROUPS_F2_GENERATED', `${generatedGroups.length} grupos F2 y ${generatedMatches.length} partidas generadas.`);
+  };
+  const classifyF2 = () => {
+    if (!groupsF2.length) return alert('Debe generar Grupos F2 antes de clasificar.');
+    if (pending.length) return alert('Hay partidas pendientes en Grupos F2. Complete resultados antes de clasificar.');
+    const qualified = qualify(standingsF2, { ...championship, ...form });
+    setSeeds(qualified);
+    setChampionship({ ...championship, groups_f2: standingsF2, f2_settings: form, seeds_f2: qualified, status: 'GROUPS_F2_CLOSED' });
+    audit?.('GROUPS_F2_QUALIFIED', `${qualified.length} clasificados desde Grupos F2.`);
+  };
+  if (championship.championship_type !== 'DOBLE_FASE_GRUPOS') return E(EmptyState, { title: 'No aplica', message: 'Este tab solo se usa en campeonatos tipo Doble Fase Grupos.' });
+  return E('div', { className: 'grid groups-f2-module' },
+    E(Card, null,
+      E(SectionTitle, { title: 'Grupos F2 · Segunda fase de grupos', subtitle: 'Genera una segunda fase con los jugadores clasificados desde la primera fase de grupos.' }),
+      E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
+        E(Stat, { label: 'Clasificados F1', value: qualifiedPlayers.length }),
+        E(Stat, { label: 'Grupos F2', value: groupsF2.length || '-' }),
+        E(Stat, { label: 'Partidas F2', value: matchesF2.length || '-' }),
+        E(Stat, { label: 'Pendientes', value: pending.length })
+      ),
+      E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
+        E('label', null, 'Tamaño grupo', E('select', { value: form.preferred_group_size, onChange: (e) => patch('preferred_group_size', Number(e.target.value)) }, [3,4,5,6].map((x) => E('option', { key: x, value: x }, x)))),
+        E('label', null, 'Modo generación', E('select', { value: form.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, ['FULL_RANDOM', 'SEEDED_RANDOM', 'SEEDED_RANDOM_COUNTRY_SPREAD', 'SNAKE_DRAFT'].map((x) => E('option', { key: x, value: x }, x)))),
+        E('label', null, 'Clasificados directos/grupo', E('input', { type: 'number', value: form.qualifiers_per_group, onChange: (e) => patch('qualifiers_per_group', Number(e.target.value)) })),
+        E('label', null, 'Mejores adicionales', E('input', { type: 'number', value: form.extra_qualifiers_count, onChange: (e) => patch('extra_qualifiers_count', Number(e.target.value)) })),
+        E('label', null, 'Posición adicional', E('input', { type: 'number', value: form.extra_qualifier_position, onChange: (e) => patch('extra_qualifier_position', Number(e.target.value)) })),
+        E('label', null, 'Total clasificados final', E('input', { type: 'number', value: form.total_qualifiers_f2, onChange: (e) => patch('total_qualifiers_f2', Number(e.target.value)) })),
+        E('label', null, 'Seed sorteo F2', E('input', { value: form.random_seed, onChange: (e) => patch('random_seed', e.target.value) }))
+      ),
+      E('div', { className: 'toolbar', style: { marginTop: 14 } },
+        E(Button, { kind: 'success', onClick: generateF2 }, groupsF2.length ? 'Regenerar Grupos F2' : 'Generar Grupos F2'),
+        E(Button, { kind: 'primary', onClick: classifyF2, disabled: !groupsF2.length }, 'Clasificar Grupos F2')
+      )
+    ),
+    !qualifiedPlayers.length ? E(EmptyState, { title: 'Pendiente de clasificación F1', message: 'Clasifique primero la fase de grupos inicial para alimentar Grupos F2.' }) : null,
+    groupsF2.length ? E('div', { className: 'grid grid-2' }, standingsF2.map((group) => E(Card, { key: group.group_id },
+      E('h3', null, group.group_name),
+      E('div', { className: 'table-wrap' }, E('table', null,
+        E('thead', null, E('tr', null, ['Pos', 'Jugador', 'PJ', 'PG', 'PE', 'PP', 'Pts', 'CAR', 'ENT', 'AVG'].map((h) => E('th', { key: h }, h)))),
+        E('tbody', null, group.standings.map((row) => E('tr', { key: row.player.player_id },
+          E('td', null, row.group_position), E('td', null, playerName(row.player)), E('td', null, row.played), E('td', null, row.wins), E('td', null, row.draws), E('td', null, row.losses), E('td', null, row.points), E('td', null, row.caroms), E('td', null, row.innings), E('td', null, fmtAvg(row.avg))
+        )))
+      ))
+    ))) : null
+  );
+}
+
 function Dashboard({ championship, players, groups, matches, seeds, championships }) {
   const completed = matches.filter((m) => m.match_status === 'COMPLETED').length;
   const pending = matches.length - completed;
@@ -884,6 +986,9 @@ function AppShell({ auth }) {
   const [activeId, setActiveId] = useState(saved?.activeId || initialChampionship.championship_id);
   const [championships, setChampionships] = useState(saved?.championships || [makeChampionshipSnapshot(initialChampionship, saved?.groups || [], saved?.matches || [], saved?.seeds || [])]);
   const [historyPlayerId, setHistoryPlayerId] = useState('');
+  const [uiThemePreference, setUiThemePreference] = useState(() => {
+    try { return localStorage.getItem(UI_THEME_KEY) || (initialChampionship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light'); } catch { return initialChampionship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light'; }
+  });
   const [uxMode, setUxModeState] = useState(() => {
     try {
       const savedMode = localStorage.getItem(UX_MODE_KEY);
@@ -907,8 +1012,15 @@ function AppShell({ auth }) {
   }, [isRankingChampionship, tab]);
 
   useEffect(() => {
+    const nextTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
+    if (tab === 'config' && nextTheme !== uiThemePreference) {
+      setUiThemePreference(nextTheme);
+      try { localStorage.setItem(UI_THEME_KEY, nextTheme); } catch {}
+    }
+  }, [championship.global_settings?.ui_theme, tab, uiThemePreference]);
+
+  useEffect(() => {
     if (uxMode !== 'pro' && ['grand', 'rankingHub'].includes(tab)) setTab('dashboard');
-    if (uxMode === 'pro' && tab === 'reports') setTab('dashboard');
   }, [uxMode, tab]);
 
 
@@ -1000,7 +1112,7 @@ function AppShell({ auth }) {
       ...DEFAULT_CHAMPIONSHIP,
       championship_id: nextId,
       name: String(form.name || (isRanking ? 'Nuevo Ranking' : 'Nuevo Campeonato')).trim(),
-      championship_type: isRanking ? 'RANKING' : 'NORMAL',
+      championship_type: isRanking ? 'RANKING' : ((form.championship_type || 'NORMAL') === 'DOBLE_FASE_GRUPOS' ? 'DOBLE_FASE_GRUPOS' : 'NORMAL'),
       venue_name: form.venue_name || DEFAULT_CHAMPIONSHIP.venue_name,
       start_date: form.start_date || DEFAULT_CHAMPIONSHIP.start_date,
       end_date: form.end_date || form.start_date || DEFAULT_CHAMPIONSHIP.end_date,
@@ -1106,8 +1218,8 @@ ${link}`);
   };
 
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
-  const uiTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
-  const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking'].includes(tab));
+  const uiTheme = uiThemePreference === 'dark' ? 'dark' : 'light';
+  const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking', 'reports'].includes(tab));
   if (typeof window !== 'undefined') window.__CAROMCHAMPS_LANGUAGE__ = championship.global_settings?.language || 'es';
 
   return E('div', { className: `app-shell theme-${uiTheme} ${menuCollapsed ? 'menu-collapsed' : ''} ux-mode-${uxMode}` },
@@ -1125,18 +1237,19 @@ ${link}`);
         )
       ) : null,
       E('div', { className: 'sync-status' }, syncStatus),
-      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players }),
+      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players, openChampionshipDashboard: (id) => loadChampionship(id, 'dashboard'), openPlayerHistory: setHistoryPlayerId }),
       tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
       tab === 'championships' && (uxMode === 'pro' ? E(ProChampionshipHub, { type: 'NORMAL', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) : E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship })),
       tab === 'rankingHub' && uxMode === 'pro' && E(ProChampionshipHub, { type: 'RANKING', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }),
       tab === 'players' && E(PlayersModule, shared),
       tab === 'setup' && E(SetupModule, { championship, setChampionship, players, championships, activeId }),
       tab === 'groups' && E(GroupsModule, shared),
+      tab === 'groupsF2' && E(GroupsF2Module, shared),
       tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
       tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit }),
       tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, audit }),
       tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
-      tab === 'ranking' && E(RankingModule, { championship, championships, players }),
+      tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),
       tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
       tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
       tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),

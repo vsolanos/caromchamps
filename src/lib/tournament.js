@@ -343,10 +343,10 @@ export function validateMatch(match) {
   if (num(match.s1_p2) > num(match.caroms_p2)) errors.push('S1 J2 no puede superar carambolas J2.');
   if (match.applied_closure_type === 'CON_CIERRE' && num(match.innings_p1) !== num(match.innings_p2)) errors.push('Con Cierre requiere entradas iguales.');
   if (match.applied_closure_type === 'SIN_CIERRE' && Math.abs(num(match.innings_p1) - num(match.innings_p2)) > 1) errors.push('Sin Cierre permite diferencia máxima de una entrada.');
-  if (num(match.caroms_p1) === num(match.caroms_p2) && match.phase !== 'GROUPS' && num(match.penalties_p1) === num(match.penalties_p2)) {
+  if (num(match.caroms_p1) === num(match.caroms_p2) && !['GROUPS', 'GROUPS_F2'].includes(match.phase) && num(match.penalties_p1) === num(match.penalties_p2)) {
     errors.push('Empate eliminatorio requiere penales diferentes.');
   }
-  if (match.phase === 'GROUPS' && (num(match.penalties_p1) > 0 || num(match.penalties_p2) > 0)) errors.push('No se permiten penales en grupos.');
+  if (['GROUPS', 'GROUPS_F2'].includes(match.phase) && (num(match.penalties_p1) > 0 || num(match.penalties_p2) > 0)) errors.push('No se permiten penales en grupos.');
   return errors;
 }
 
@@ -356,7 +356,7 @@ export function completeMatch(match) {
   let winner = '';
   if (c1 > c2) winner = match.player1_id;
   else if (c2 > c1) winner = match.player2_id;
-  else if (match.phase !== 'GROUPS') winner = num(match.penalties_p1) > num(match.penalties_p2) ? match.player1_id : match.player2_id;
+  else if (!['GROUPS', 'GROUPS_F2'].includes(match.phase)) winner = num(match.penalties_p1) > num(match.penalties_p2) ? match.player1_id : match.player2_id;
   return { ...match, winner_id: winner, match_status: 'COMPLETED' };
 }
 
@@ -366,13 +366,13 @@ export function autoFillMatches(matches, seed = 'demo') {
     if (match.match_status === 'COMPLETED') return match;
     let c1 = Math.max(1, Math.floor(10 + random() * 31));
     let c2 = Math.max(1, Math.floor(10 + random() * 31));
-    if (match.phase !== 'GROUPS' && c1 === c2) c2 = Math.max(1, c2 - 1);
+    if (!['GROUPS', 'GROUPS_F2'].includes(match.phase) && c1 === c2) c2 = Math.max(1, c2 - 1);
     const innings = Math.max(1, Math.floor(18 + random() * 22));
     const s1a = Math.min(c1, Math.max(1, Math.floor(3 + random() * 10)));
     const s1b = Math.min(c2, Math.max(1, Math.floor(3 + random() * 10)));
     const s2a = Math.min(s1a, Math.max(0, Math.floor(random() * s1a)));
     const s2b = Math.min(s1b, Math.max(0, Math.floor(random() * s1b)));
-    const penalties = c1 === c2 && match.phase !== 'GROUPS' ? { penalties_p1: '2', penalties_p2: '1' } : {};
+    const penalties = c1 === c2 && !['GROUPS', 'GROUPS_F2'].includes(match.phase) ? { penalties_p1: '2', penalties_p2: '1' } : {};
     return completeMatch({
       ...match,
       caroms_p1: String(c1),
@@ -836,12 +836,12 @@ function inBlackout(championship, day, start, end) {
 }
 
 function baseTableForMatch(championship, match, tables) {
-  if (match.phase === 'GROUPS' && match.group_number) return tables[(num(match.group_number, 1) - 1) % tables.length] || tables[0];
+  if (['GROUPS', 'GROUPS_F2'].includes(match.phase) && match.group_number) return tables[(num(match.group_number, 1) - 1) % tables.length] || tables[0];
   return tables[0];
 }
 
 function schedulePhaseRank(match) {
-  if (match.phase === 'GROUPS') return 1;
+  if (['GROUPS', 'GROUPS_F2'].includes(match.phase)) return 1;
   if (match.phase === 'PRE_ELIMINATION') return 2;
   if (match.phase === 'KO') {
     const order = { R128: 3, R64: 4, R32: 5, R16: 6, QF: 7, SF: 8, F: 9 };
@@ -1018,7 +1018,7 @@ export function matchCode(match) {
 export function matchScore(match) {
   if (!match || match.match_status !== 'COMPLETED') return '-';
   const base = String(num(match.caroms_p1)) + ' - ' + String(num(match.caroms_p2));
-  if (match.phase !== 'GROUPS' && num(match.caroms_p1) === num(match.caroms_p2)) return base + ' / Pen ' + String(num(match.penalties_p1)) + '-' + String(num(match.penalties_p2));
+  if (!['GROUPS', 'GROUPS_F2'].includes(match.phase) && num(match.caroms_p1) === num(match.caroms_p2)) return base + ' / Pen ' + String(num(match.penalties_p1)) + '-' + String(num(match.penalties_p2));
   return base;
 }
 
@@ -1044,7 +1044,7 @@ export function matchRoundKey(match) {
 
 export function matchRoundLabel(match) {
   const key = matchRoundKey(match);
-  return match?.phase === 'GROUPS' ? (match.group_name || 'Grupos') : roundDisplayName(key);
+  return ['GROUPS', 'GROUPS_F2'].includes(match?.phase) ? (match.group_name || (match.phase === 'GROUPS_F2' ? 'Grupos F2' : 'Grupos')) : roundDisplayName(key);
 }
 
 export function matchAverage(caroms, innings) {

@@ -225,8 +225,9 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
     if (pending.length) return alert('Hay partidas de grupos pendientes. Complete resultados antes de clasificar.');
     const qualified = qualify(standings, championship);
     setSeeds(qualified);
-    setChampionship({ ...championship, status: 'GROUPS_CLOSED' });
-    audit('QUALIFIED_GENERATED', `${qualified.length} clasificados.`);
+    const doubleGroups = championship.championship_type === 'DOBLE_FASE_GRUPOS';
+    setChampionship({ ...championship, status: doubleGroups ? 'GROUPS_F2_READY' : 'GROUPS_CLOSED', seeds_f1: doubleGroups ? qualified : championship.seeds_f1 });
+    audit('QUALIFIED_GENERATED', doubleGroups ? `${qualified.length} clasificados para Grupos F2.` : `${qualified.length} clasificados.`);
   };
 
   const reopenGroups = () => {

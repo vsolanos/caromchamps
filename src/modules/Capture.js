@@ -173,7 +173,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
 
   const scoreSheetMatches = useMemo(() => {
     const base = sheetMode === 'ALL' ? matches
-      : sheetMode === 'GROUPS' ? matches.filter((m) => m.phase === 'GROUPS')
+      : sheetMode === 'GROUPS' ? matches.filter((m) => ['GROUPS', 'GROUPS_F2'].includes(m.phase))
         : sheetMode === 'ELIMINATION' ? matches.filter((m) => ['PRE_ELIMINATION', 'KO'].includes(m.phase))
           : sheetMode === 'PENDING' ? matches.filter((m) => m.match_status !== 'COMPLETED' && m.match_status !== 'LOCKED')
             : sheetMode === 'SELECTED' ? matches.filter((m) => selectedIds.includes(m.match_id))
@@ -238,7 +238,7 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
       E('td', { key: 's1', className: activeDataClass(s1Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
       E('td', { key: 's2', className: activeDataClass(s2Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
     ];
-    if (match.phase !== 'GROUPS') {
+    if (!['GROUPS', 'GROUPS_F2'].includes(match.phase)) {
       const penaltiesValue = isP1 ? match.penalties_p1 : match.penalties_p2;
       cells.push(E('td', { key: 'penalties', className: activeDataClass(penaltiesValue) }, E(Input, { type: 'number', disabled: isPlanned, value: penaltiesValue, onChange: (e) => patchKey(isP1 ? 'penalties_p1' : 'penalties_p2', e.target.value) })));
     }
@@ -435,13 +435,13 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
         ),
         renderMatchScoreSheetControls(match),
         E('div', { className: 'grid grid-4', style: { marginTop: 10 } },
-          E('div', { className: 'match-active-data-cell has-result-data match-result-admin-cell' }, E(Field, { label: 'Tipo resultado' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.match_result_type === 'PENALTIES' && match.phase === 'GROUPS' ? 'NORMAL' : (match.match_result_type || 'NORMAL'), onChange: (e) => update(match.match_id, { match_result_type: e.target.value, penalties_p1: match.phase === 'GROUPS' ? '' : match.penalties_p1, penalties_p2: match.phase === 'GROUPS' ? '' : match.penalties_p2 }) }, (match.phase === 'GROUPS' ? ['NORMAL', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL'] : ['NORMAL', 'PENALTIES', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL']).map((x) => E('option', { key: x }, x))))),
+          E('div', { className: 'match-active-data-cell has-result-data match-result-admin-cell' }, E(Field, { label: 'Tipo resultado' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.match_result_type === 'PENALTIES' && ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? 'NORMAL' : (match.match_result_type || 'NORMAL'), onChange: (e) => update(match.match_id, { match_result_type: e.target.value, penalties_p1: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p1, penalties_p2: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p2 }) }, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? ['NORMAL', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL'] : ['NORMAL', 'PENALTIES', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL']).map((x) => E('option', { key: x }, x))))),
           E('div', { className: 'match-active-data-cell has-result-data match-result-admin-cell' }, E(Field, { label: 'Ganador manual' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.winner_id || '', onChange: (e) => update(match.match_id, { winner_id: e.target.value }) }, E('option', { value: '' }, 'Auto'), E('option', { value: match.player1_id }, playerName(playerMap[match.player1_id])), E('option', { value: match.player2_id }, playerName(playerMap[match.player2_id]))))),
           E(Field, { label: 'Árbitro/Capturista' }, E(Input, { disabled: match.match_status === 'PLANNED', value: match.assigned_official || '', onChange: (e) => update(match.match_id, { assigned_official: e.target.value }), placeholder: 'Nombre' })),
           E('div', { className: 'toolbar', style: { alignItems: 'end' } }, E(Button, { onClick: () => saveOne(match), kind: 'success', disabled: match.match_status === 'PLANNED' }, match.match_status === 'PLANNED' ? 'Planificada' : 'Guardar'), E(Button, { onClick: () => reopen(match), kind: 'warning' }, 'Reabrir'))
         ),
         E('div', { className: 'table-wrap', style: { marginTop: 12 } }, E('table', null,
-          E('thead', null, E('tr', null, (match.phase === 'GROUPS' ? ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Promedio'] : ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Penales', 'Promedio']).map((h) => E('th', { key: h }, h)))),
+          E('thead', null, E('tr', null, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Promedio'] : ['Jugador', 'Carambolas', 'Entradas', 'SM1', 'SM2', 'Penales', 'Promedio']).map((h) => E('th', { key: h }, h)))),
           E('tbody', null, playerLine(match, 1), playerLine(match, 2))
         ))
       ))

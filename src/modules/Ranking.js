@@ -247,9 +247,9 @@ function RankingMainTable({ rows, associated, codeByChampionshipId }) {
   ));
 }
 
-function ChampionshipDetailTables({ championshipRankings, codeByChampionshipId }) {
+function ChampionshipDetailTables({ championshipRankings, codeByChampionshipId, openChampionshipTab }) {
   return E('div', { className: 'grid ranking-detail-grid', style: { marginTop: 14 } }, championshipRankings.map(({ championshipRow, champ, ranking }) => E('div', { key: championshipRow.id, className: 'round-card ranking-championship-detail' },
-    E('h3', null, `${codeByChampionshipId?.[championshipRow.id] || 'C?'} · ${champ.name || championshipRow.name}`),
+    E('h3', null, E('button', { type: 'button', className: 'link-button ranking-championship-link', onClick: () => openChampionshipTab?.(championshipRow.id, 'reports') }, `${codeByChampionshipId?.[championshipRow.id] || 'C?'} · ${champ.name || championshipRow.name}`)),
     E('p', { className: 'small' }, `${formatDateEs(champ.start_date)} / ${formatDateEs(champ.end_date)} · ${ranking.length} jugadores`),
     ranking.length ? E('div', { className: 'table-wrap' }, E('table', { className: 'ranking-detail-table' },
       E('thead', null, E('tr', null, ['Pos', 'Jugador', 'Estado', 'PRG', 'PJ', 'PG', 'PP', 'PE', 'CAR', 'ENT', 'AVG'].map((h) => E('th', { key: h }, h)))),
@@ -320,7 +320,7 @@ function RankingDashboard({ rows, championshipRankings }) {
   );
 }
 
-export function RankingModule({ championship, championships, players = [] }) {
+export function RankingModule({ championship, championships, players = [], openChampionshipTab }) {
   const [pageSize, setPageSize] = useState(championship.global_settings?.pdf_default_page_size || 'A4');
   const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
   const [scale, setScale] = useState('100');
@@ -367,7 +367,7 @@ export function RankingModule({ championship, championships, players = [] }) {
         rows.length ? E(Card, null, E(RankingMainTable, { rows, associated, codeByChampionshipId })) : E(EmptyState, { title: 'Sin resultados de ranking', message: 'Asocie campeonatos normales a este ranking y finalícelos para acumular puntuaciones.' }),
         championshipRankings.length ? E(Card, { className: 'ranking-detail-print-card' },
           E(SectionTitle, { title: 'Detalle por campeonato jugado', subtitle: 'PRG, PJ, PG, PP, PE, CAR, ENT y AVG por campeonato normal asociado.' }),
-          E(ChampionshipDetailTables, { championshipRankings, codeByChampionshipId })
+          E(ChampionshipDetailTables, { championshipRankings, codeByChampionshipId, openChampionshipTab })
         ) : null
       )
     )

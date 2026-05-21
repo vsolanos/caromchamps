@@ -1,4 +1,4 @@
-# CaromChamps v6.1.0
+# CaromChamps v6.2.0
 
 Plataforma web para gestión integral de campeonatos de billar carambola a 3 bandas FECOBI / ASOBIGRIE: jugadores, campeonatos normales, campeonatos ranking, grupos, calendario, captura de partidas, llaves/brackets, reportes PDF/Excel, ranking, cierre y auditoría.
 
@@ -313,3 +313,14 @@ git tag -a v6.1.0 -m "CaromChamps v6.1.0"
 git push origin v6.1.0
 ```
 
+
+
+## v6.2.0
+
+- Interface ProV: panel de tabs en modo oscuro con fondo azul claro, persistencia visual revisada y tab Reportes agregado.
+- Grand Dashboard: enlaces desde gráficos hacia dashboards de campeonato e historial de jugadores.
+- Dashboard de campeonato: gráfica AVG por fase restaurada a tamaño completo, incluye Grupos F2 y se eliminó el duplicado de Siguiente paso recomendado.
+- Setup/Campeonato: bloqueo de selección de jugadores, reglas y mesas después de clasificar grupos o cerrar campeonato en ProV, IA y Clásico.
+- Ranking: detalle por campeonato enlaza al tab Reportes del campeonato asociado.
+- Llaves Face to Face: Final reposicionada hacia los conectores, campeón al lado de la Final y PDF reducido para una página.
+- Nueva funcionalidad Doble Fase Grupos con tipo de campeonato, wizard y tab Grupos F2.
