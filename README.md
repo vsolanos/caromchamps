@@ -6,7 +6,7 @@
 - Llaves Face to Face: Final y Campeón reposicionados hacia la zona superior de conectores, con líneas de Semis asociadas a la Final.
 - Control de promedios desactivado: cierre, acta y ranking de cierre evitan mostrar AVG/entradas cuando no aplica.
 
-# CaromChamps v6.4.0
+# CaromChamps v6.5.0
 
 ## v6.3.0
 
@@ -364,3 +364,9 @@ git push origin v6.1.0
 - Ranking: detalle por campeonato enlaza al tab Reportes del campeonato asociado.
 - Llaves Face to Face: Final reposicionada hacia los conectores, campeón al lado de la Final y PDF reducido para una página.
 - Nueva funcionalidad Doble Fase Grupos con tipo de campeonato, wizard y tab Grupos F2.
+
+
+## v6.5.0
+
+- Corrección definitiva de planillas PDF: primera plantilla base en blanco, aislamiento del área imprimible y una planilla por página.
+- Corrección Face to Face: Final y Campeón reposicionados en el centro superior solicitado y conectores ajustados.

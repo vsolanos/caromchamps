@@ -124,9 +124,11 @@ function ScoreSheetPage({ championship, match = {}, playerMap, logoMode = 'FECOB
 }
 
 function ScoreSheetsPrintDocument({ championship, matches, playerMap, logoMode }) {
-  // v6.4: only print requested match sheets. The previous leading blank template behaved
-  // as the first planilla and was the one splitting into two pages in browser PDF output.
+  // v6.5: restore a first blank base template for the tournament, but isolate the
+  // print scope so the template and every official match sheet render as exactly
+  // one centered Letter page.
   return E('section', { className: 'score-sheets-print-scope' },
+    E(ScoreSheetPage, { key: 'blank-base-template', championship, match: {}, playerMap, logoMode, blank: true }),
     matches.map((match) => E(ScoreSheetPage, { key: match.match_id, championship, match, playerMap, logoMode }))
   );
 }

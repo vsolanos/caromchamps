@@ -4922,3 +4922,172 @@ body.printing-groups .aligned-player-submeta {
     min-height: 108px !important;
   }
 }
+
+
+/* v6.5.0 · Definitive score sheet print isolation and Face to Face center-stage correction. */
+@media print {
+  body.printing-score-sheets {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+  body.printing-score-sheets * {
+    visibility: hidden !important;
+  }
+  body.printing-score-sheets .score-sheets-print-container,
+  body.printing-score-sheets .score-sheets-print-container * {
+    visibility: visible !important;
+  }
+  body.printing-score-sheets .score-sheets-print-container {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+  body.printing-score-sheets .score-sheets-print-scope {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+  body.printing-score-sheets .score-sheet-page {
+    width: 7.66in !important;
+    max-width: 7.66in !important;
+    height: 10.06in !important;
+    max-height: 10.06in !important;
+    min-height: 10.06in !important;
+    margin: .22in auto .22in auto !important;
+    padding: 1.9mm !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    zoom: 1 !important;
+    overflow: hidden !important;
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    border: 1.35px solid #111827 !important;
+  }
+  body.printing-score-sheets .score-sheet-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+  body.printing-score-sheets .score-sheet-header {
+    grid-template-columns: 72px 1fr 72px !important;
+    gap: 4px !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 2px !important;
+    flex: 0 0 auto !important;
+  }
+  body.printing-score-sheets .score-sheet-title h2 { font-size: 10.6px !important; line-height: 1.02 !important; }
+  body.printing-score-sheets .score-sheet-title h3 { font-size: 8.5px !important; line-height: 1 !important; margin: 0 !important; }
+  body.printing-score-sheets .score-sheet-title p { font-size: 7px !important; line-height: 1 !important; }
+  body.printing-score-sheets .score-sheet-logos img { max-width: 34px !important; max-height: 34px !important; }
+  body.printing-score-sheets .score-sheet-qr svg,
+  body.printing-score-sheets .score-sheet-qr-placeholder { width: 40px !important; height: 40px !important; }
+  body.printing-score-sheets .score-sheet-meta-grid { gap: 1.5px !important; font-size: 7px !important; margin-bottom: 2px !important; }
+  body.printing-score-sheets .score-sheet-meta-grid > div { min-height: 12px !important; padding: 1px 3px !important; }
+  body.printing-score-sheets .score-sheet-players { gap: 3px !important; margin-bottom: 2px !important; font-size: 8px !important; }
+  body.printing-score-sheets .score-sheet-players > div { min-height: 21px !important; padding: 1px 3px !important; }
+  body.printing-score-sheets .score-sheet-player-line { min-height: 8.5px !important; gap: 3px !important; }
+  body.printing-score-sheets .score-sheet-table-wrap {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin-bottom: 2px !important;
+    overflow: hidden !important;
+  }
+  body.printing-score-sheets .score-sheet-innings-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+    font-size: 6px !important;
+    margin: 0 !important;
+  }
+  body.printing-score-sheets .score-sheet-innings-table th,
+  body.printing-score-sheets .score-sheet-innings-table td {
+    height: calc((100% - 20px) / var(--sheet-row-count, 40)) !important;
+    min-height: 0 !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+  }
+  body.printing-score-sheets .score-sheet-summary-grid {
+    flex: 0 0 94px !important;
+    min-height: 94px !important;
+    margin-top: auto !important;
+    grid-template-columns: 1fr .75fr 1fr !important;
+    gap: 3px !important;
+  }
+  body.printing-score-sheets .score-sheet-summary-box { padding: 2px !important; display: grid !important; grid-template-rows: auto repeat(4, 1fr) !important; }
+  body.printing-score-sheets .score-sheet-summary-box h4 { font-size: 6.9px !important; margin: 0 !important; }
+  body.printing-score-sheets .score-sheet-summary-box > div { min-height: 0 !important; grid-template-columns: 58px 1fr !important; }
+  body.printing-score-sheets .score-sheet-summary-box b { font-size: 6px !important; padding-left: 2px !important; }
+  body.printing-score-sheets .score-sheet-summary-box span { min-height: 0 !important; }
+}
+
+.face-tree-center {
+  flex: 0 0 560px !important;
+  width: 560px !important;
+  min-width: 560px !important;
+  display: block !important;
+  position: relative !important;
+  align-self: stretch !important;
+  overflow: visible !important;
+}
+.face-final-up-wrap,
+.face-tree-final-wrap.face-final-up-wrap {
+  position: absolute !important;
+  left: 50% !important;
+  top: var(--face-final-offset, 120px) !important;
+  transform: translateX(-50%) !important;
+  width: 560px !important;
+  min-width: 560px !important;
+  margin: 0 !important;
+  z-index: 6 !important;
+}
+.face-final-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 18px !important;
+}
+.face-final-row .continuous-match { flex: 0 0 330px !important; }
+.face-tree-final-wrap .face-champion-node.face-champion-side-final {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 28px 0 0 !important;
+  width: 210px !important;
+  min-width: 210px !important;
+  min-height: 104px !important;
+  z-index: 8 !important;
+}
+.face-center-connector-svg {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 560px !important;
+  min-width: 560px !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+@media print {
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-center {
+    width: 560px !important;
+    min-width: 560px !important;
+    flex-basis: 560px !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-final-wrap.face-final-up-wrap {
+    top: var(--face-final-offset, 120px) !important;
+    transform: translateX(-50%) !important;
+  }
+  body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium { zoom: var(--pdf-scale, .29) !important; }
+}

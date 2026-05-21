@@ -1,3 +1,12 @@
+
+## v6.5.0
+
+- Planillas PDF: se restaura la primera planilla en blanco como plantilla base del torneo.
+- Planillas PDF: se aísla completamente el área de impresión para que no aparezcan tabs, menús ni controles de ProV en la primera página.
+- Planillas PDF: ajuste de tamaño, centrado horizontal y vertical operativo para una planilla por página en Carta.
+- Llaves Face to Face: rediseño de posicionamiento central mediante layout absoluto para mover Final y Campeón desde la zona inferior hacia el centro superior solicitado.
+- Llaves Face to Face: conectores centrales recalculados para enlazar Semis con la Final en la nueva posición.
+
 ## v6.4.0
 
 - Agregados scripts de inicio local y autoarranque para evitar confusión por servidor local detenido (`localhost refused to connect`).

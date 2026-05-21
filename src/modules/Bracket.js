@@ -561,8 +561,8 @@ function closestSemiPosition(layout, finalY) {
 
 function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }) {
   if (!final) return null;
-  const width = 380;
-  const finalWrapWidth = 360;
+  const width = 560;
+  const finalWrapWidth = 560;
   const finalLeft = Math.round((width - finalWrapWidth) / 2);
   const finalRight = finalLeft + finalWrapWidth;
   const titleHeight = 36;
@@ -588,17 +588,13 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
   const rightLayout = buildFaceBranchLayout(matches, final, 'right');
   const hasR0 = matches.some((m) => matchRoundKey(m) === 'R0');
   const baseStageHeight = Math.max(leftLayout.height, rightLayout.height, 640);
-  const semiCenters = [
-    final?.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null,
-    final?.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null
-  ].filter(Boolean).map((position) => position.y + position.height / 2).sort((a, b) => a - b);
-  // v6.4: Face to Face must place Final in the upper connector corridor, not in the lower free area.
-  // Using the upper semifinal center keeps the Final visually close to the yellow connector area requested by UX.
-  const upperSemiCenter = semiCenters.length ? semiCenters[0] : 220;
-  const targetCenter = Math.max(178, upperSemiCenter + 32);
-  const finalVerticalOffset = final ? Math.max(0, Math.round(targetCenter - 36 - 146)) : 0;
+  // v6.5: the center stage is now absolute-positioned. Previous versions mixed
+  // flex vertical centering with translateY(), so even small offsets pushed the
+  // Final and Champion toward the bottom. Keep the Final in the upper central
+  // corridor requested by UX, independently from source-match ordering.
+  const finalVerticalOffset = final ? Math.max(86, Math.min(178, Math.round(baseStageHeight * 0.115))) : 0;
   const championVerticalGap = final?.winner_id ? 34 : 0;
-  const stageHeight = Math.max(baseStageHeight, finalVerticalOffset + 420) + championVerticalGap;
+  const stageHeight = Math.max(baseStageHeight, finalVerticalOffset + 430) + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
     E('div', { className: 'face-header-note' },
@@ -609,7 +605,7 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
       E(FaceBranch, { layout: leftLayout, playerMap, matches, championship }),
       E('div', { className: 'face-center-stage face-tree-center', style: { minHeight: `${stageHeight}px` } },
         E(FaceCenterConnectorSvg, { final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }),
-        final ? E('div', { className: 'face-final-wrap face-tree-final-wrap face-final-up-wrap', style: { transform: `translateY(${finalVerticalOffset}px)` } },
+        final ? E('div', { className: 'face-final-wrap face-tree-final-wrap face-final-up-wrap', style: { top: `${finalVerticalOffset}px` } },
           E('div', { className: 'round-premium-title face-round-title' },
             E('h3', null, 'FINAL'),
             E('span', null, '2 jugadores')
