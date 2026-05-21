@@ -1,3 +1,10 @@
+## v6.4.0
+
+- Agregados scripts de inicio local y autoarranque para evitar confusión por servidor local detenido (`localhost refused to connect`).
+- Corregida generación de planillas: sin hoja en blanco inicial, centrado horizontal/vertical, una página por planilla en tamaño Carta.
+- Reubicada la Final y el Campeón en Face to Face hacia la zona superior solicitada, manteniendo conectores desde Semis.
+- Ajustado cierre/acta para campeonatos con Control de Promedios = No.
+
 ## v6.3.0
 
 - ProV: ajustes de tabs en modo oscuro, links en Grand Dashboard/Ranking y mejoras del Dashboard de campeonato.

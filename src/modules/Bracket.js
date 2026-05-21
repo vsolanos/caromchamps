@@ -591,11 +591,14 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
   const semiCenters = [
     final?.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null,
     final?.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null
-  ].filter(Boolean).map((position) => position.y + position.height / 2);
-  const targetCenter = semiCenters.length ? semiCenters.reduce((sum, value) => sum + value, 0) / semiCenters.length : 220;
+  ].filter(Boolean).map((position) => position.y + position.height / 2).sort((a, b) => a - b);
+  // v6.4: Face to Face must place Final in the upper connector corridor, not in the lower free area.
+  // Using the upper semifinal center keeps the Final visually close to the yellow connector area requested by UX.
+  const upperSemiCenter = semiCenters.length ? semiCenters[0] : 220;
+  const targetCenter = Math.max(178, upperSemiCenter + 32);
   const finalVerticalOffset = final ? Math.max(0, Math.round(targetCenter - 36 - 146)) : 0;
-  const championVerticalGap = final?.winner_id ? 60 : 0;
-  const stageHeight = baseStageHeight + finalVerticalOffset + championVerticalGap;
+  const championVerticalGap = final?.winner_id ? 34 : 0;
+  const stageHeight = Math.max(baseStageHeight, finalVerticalOffset + 420) + championVerticalGap;
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
     E('div', { className: 'face-header-note' },

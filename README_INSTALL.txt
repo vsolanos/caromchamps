@@ -1,20 +1,28 @@
-FECOBI / ASOBIGRIE Preproducción v3.1 - Instalación limpia
+CaromChamps v6.4.0 - Instalación local Windows
 
-1. Descomprime el ZIP en una carpeta nueva.
-2. Abre PowerShell en la carpeta donde está package.json.
+IMPORTANTE SOBRE "localhost refused to connect"
+Ese mensaje aparece cuando el servidor local de CaromChamps no está corriendo.
+Para evitarlo, use siempre START_CAROMCHAMPS.bat o instale la tarea de autoarranque.
+
+Instalación limpia:
+1. Descomprime el ZIP en C:\proyectos\caromchamps
+2. Abre PowerShell en esa carpeta.
 3. Ejecuta:
 
-   npm.cmd config set registry https://registry.npmjs.org/
    npm.cmd install --registry=https://registry.npmjs.org/
-   npm.cmd run dev
+   npm.cmd run check:syntax
+   npm.cmd run build
+   .\START_CAROMCHAMPS.ps1
 
-Si reutilizas una carpeta anterior, antes ejecuta:
+Uso diario recomendado:
+   Doble click en START_CAROMCHAMPS.bat
 
-   if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }
-   if (Test-Path package-lock.json) { Remove-Item -Force package-lock.json }
-   npm.cmd config set registry https://registry.npmjs.org/
-   npm.cmd install --registry=https://registry.npmjs.org/
-   npm.cmd run dev
+Autoarranque al iniciar sesión:
+   PowerShell como usuario normal desde la carpeta del proyecto:
+   .\INSTALL_CAROMCHAMPS_AUTOSTART.ps1
 
-Abrir en navegador:
-http://localhost:5173/
+Quitar autoarranque:
+   .\REMOVE_CAROMCHAMPS_AUTOSTART.ps1
+
+URL local:
+http://localhost:5173/#tab=grand

@@ -1,4 +1,12 @@
-# CaromChamps v6.3.0
+
+## v6.4.0
+
+- Solución operativa para `localhost refused to connect`: scripts `START_CAROMCHAMPS.bat/.ps1` y tarea opcional de autoarranque.
+- Planillas PDF: se elimina la planilla en blanco inicial del lote, se centra horizontal/verticalmente la hoja y se corrige el salto de la primera planilla a dos páginas.
+- Llaves Face to Face: Final y Campeón reposicionados hacia la zona superior de conectores, con líneas de Semis asociadas a la Final.
+- Control de promedios desactivado: cierre, acta y ranking de cierre evitan mostrar AVG/entradas cuando no aplica.
+
+# CaromChamps v6.4.0
 
 ## v6.3.0
 

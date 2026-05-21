@@ -4850,3 +4850,75 @@ body.printing-groups .aligned-player-submeta {
   body.printing-bracket-face.pdf-fit-one-page .face-champion-side-final { margin-top: 0 !important; }
   body.printing-score-sheets .score-sheet-page { transform: scale(.90) !important; transform-origin: top center !important; }
 }
+
+
+/* v6.4 · Ajustes definitivos: planillas centradas, Face to Face Final en zona superior y tabs ProV estables. */
+.face-tree-center { overflow: visible !important; }
+.face-final-up-wrap {
+  width: 560px !important;
+  min-width: 560px !important;
+  will-change: transform;
+}
+.face-final-row {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 18px !important;
+}
+.face-tree-final-wrap .face-champion-node.face-champion-side-final {
+  margin: 0 !important;
+  align-self: flex-start !important;
+  width: 218px !important;
+  min-width: 218px !important;
+  min-height: 104px !important;
+}
+.face-tree-final-wrap .face-champion-side-final .face-champion-line {
+  left: -24px !important;
+  top: 42px !important;
+  width: 24px !important;
+  height: 0 !important;
+  border-left: 0 !important;
+  border-top: 2px solid #facc15 !important;
+}
+@media print {
+  body.printing-bracket-face.pdf-fit-one-page .face-to-face-premium { zoom: var(--pdf-scale, .26) !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-grid { align-items: start !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-tree-final-wrap { transform: translateY(var(--face-final-offset, 0px)) !important; }
+  body.printing-bracket-face.pdf-fit-one-page .face-champion-side-final { margin-top: 0 !important; }
+
+  body.printing-score-sheets .score-sheets-print-container,
+  body.printing-score-sheets .score-sheets-print-scope {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.printing-score-sheets .score-sheet-page {
+    width: 7.92in !important;
+    max-width: 7.92in !important;
+    height: 10.36in !important;
+    max-height: 10.36in !important;
+    min-height: 10.36in !important;
+    margin: .13in auto .13in auto !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    zoom: .94 !important;
+    overflow: hidden !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  body.printing-score-sheets .score-sheet-page:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+  body.printing-score-sheets .score-sheet-table-wrap {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+  body.printing-score-sheets .score-sheet-summary-grid {
+    flex: 0 0 108px !important;
+    min-height: 108px !important;
+  }
+}
