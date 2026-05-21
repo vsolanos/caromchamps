@@ -67,7 +67,7 @@ function ScoreSheetPage({ championship, match = {}, playerMap, logoMode = 'FECOB
         ['ASOBIGRIE', 'AMBOS'].includes(logoMode) ? E('img', { src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }) : null
       ),
       E('div', { className: 'score-sheet-title' },
-        E('h2', null, blank ? '______________________________' : (championship.name || 'Campeonato FECOBI')),
+        E('h2', null, championship.name || 'Campeonato FECOBI'),
         E('h3', null, 'Planilla oficial de partida'),
         E('p', null, blank ? 'Fase / Grupo: ______________________________' : `${matchRoundLabel(match)} · ${match.group_name || match.ko_round || ''}`)
       ),

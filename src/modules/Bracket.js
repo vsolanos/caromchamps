@@ -174,7 +174,10 @@ function MatchCard({ match, playerMap, allMatches = [], roundIndex = 0, connecto
       E(PlayerLine, { match, playerMap, side: 1, allMatches, championship }),
       E(PlayerLine, { match, playerMap, side: 2, allMatches, championship })
     ),
-    winnerName ? E('div', { className: 'continuous-winner' }, `Ganador: ${winnerName}`) : null
+    winnerName ? E('div', { className: 'continuous-winner' },
+      E('span', { className: 'winner-label' }, 'Ganador: '),
+      E('span', { className: 'winner-name' }, winnerName)
+    ) : null
   );
 }
 
@@ -400,13 +403,13 @@ function faceBranchIds(matches, final, side) {
   return fallbackFaceSideIds(matches, side);
 }
 
-function faceCardHeight(round) {
-  return round === 'R0' ? 244 : 276;
+function faceCardHeight() {
+  return 332;
 }
 
 function computeFaceGlobalTops(matches) {
-  const cardHeight = 276;
-  const rowGap = 48;
+  const cardHeight = 332;
+  const rowGap = 54;
   const slot = cardHeight + rowGap;
   const rounds = mainFaceRounds(matches).filter((round) => round !== 'R0');
   const firstMainRound = rounds[0] || '';
@@ -474,8 +477,8 @@ function buildFaceBranchLayout(matches, final, side) {
 
   const minTop = rawTops.length ? Math.min(...rawTops) : 0;
   const topPadding = 4;
-  const columnWidth = 330;
-  const columnGap = 42;
+  const columnWidth = 430;
+  const columnGap = 54;
   const positionsById = new Map();
   const columns = displayRounds.map((round, columnIndex) => {
     const rows = rowsByRound.get(round) || [];
@@ -561,12 +564,12 @@ function closestSemiPosition(layout, finalY) {
 
 function FaceCenterConnectorSvg({ final, leftLayout, rightLayout, finalVerticalOffset, stageHeight }) {
   if (!final) return null;
-  const width = 560;
-  const finalWrapWidth = 560;
+  const width = 620;
+  const finalWrapWidth = 430;
   const finalLeft = Math.round((width - finalWrapWidth) / 2);
   const finalRight = finalLeft + finalWrapWidth;
   const titleHeight = 36;
-  const finalCardHeight = 292;
+  const finalCardHeight = 332;
   const finalY = finalVerticalOffset + titleHeight + Math.round(finalCardHeight / 2);
   const leftSemi = (final.source_match1_id ? leftLayout.positionsById.get(final.source_match1_id) : null) || closestSemiPosition(leftLayout, finalY);
   const rightSemi = (final.source_match2_id ? rightLayout.positionsById.get(final.source_match2_id) : null) || closestSemiPosition(rightLayout, finalY);
@@ -592,9 +595,9 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
   // flex vertical centering with translateY(), so even small offsets pushed the
   // Final and Champion toward the bottom. Keep the Final in the upper central
   // corridor requested by UX, independently from source-match ordering.
-  const finalVerticalOffset = final ? Math.max(86, Math.min(178, Math.round(baseStageHeight * 0.115))) : 0;
-  const championVerticalGap = final?.winner_id ? 34 : 0;
-  const stageHeight = Math.max(baseStageHeight, finalVerticalOffset + 430) + championVerticalGap;
+  const finalVerticalOffset = final ? Math.max(86, Math.min(172, Math.round(baseStageHeight * 0.11))) : 0;
+  const championVerticalGap = final?.winner_id ? 150 : 0;
+  const stageHeight = Math.max(baseStageHeight, finalVerticalOffset + 332 + championVerticalGap + 160);
 
   return E('div', { className: `face-to-face-premium face-tree-premium ${hasR0 ? 'face-has-r0' : ''}` },
     E('div', { className: 'face-header-note' },
@@ -610,10 +613,10 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
             E('h3', null, 'FINAL'),
             E('span', null, '2 jugadores')
           ),
-          E('div', { className: 'face-final-row' },
-            E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 292, championship }),
-            final.winner_id ? E('div', { className: 'face-champion-node face-champion-side-final' },
-              E('span', { className: 'face-champion-line', 'aria-hidden': 'true' }),
+          E('div', { className: 'face-final-row face-final-column' },
+            E(MatchCard, { match: final, playerMap, allMatches: matches, cardHeight: 332, championship }),
+            final.winner_id ? E('div', { className: 'face-champion-node face-champion-below-final' },
+              E('span', { className: 'face-champion-line face-champion-line-vertical', 'aria-hidden': 'true' }),
               E('div', { className: 'trophy' }, '🏆'),
               E('span', null, 'Campeón / Ganador'),
               E('b', null, playerName(playerMap[final.winner_id]))

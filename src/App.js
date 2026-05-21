@@ -662,6 +662,7 @@ function GrandDashboard({ championships, players, openChampionshipDashboard, ope
   const totalMatches = normalRows.reduce((sum, row) => sum + (row.matches?.length || 0), 0);
   const completedMatches = normalRows.reduce((sum, row) => sum + completedMatchesOf(row).length, 0);
   const globalAvg = averageFromMatches(normalRows.flatMap((row) => row.matches || []));
+  const runningVersion = formatAppVersion(appPackage.version);
   return E('div', { className: 'grid pro-grand-dashboard' },
     E('section', { className: 'pro-hero' },
       E('div', null,
@@ -677,7 +678,8 @@ function GrandDashboard({ championships, players, openChampionshipDashboard, ope
       E(Stat, { label: 'Jugadores únicos', value: uniquePlayers.size }),
       E(Stat, { label: 'Inscripciones acumuladas', value: inscriptions }),
       E(Stat, { label: 'Partidas completadas', value: `${completedMatches}/${totalMatches}` }),
-      E(Stat, { label: 'AVG global', value: fmtAvg(globalAvg) })
+      E(Stat, { label: 'AVG global', value: fmtAvg(globalAvg) }),
+      E(Stat, { label: 'Versión plataforma', value: `v${runningVersion}`, hint: 'Release activo en ejecución' })
     ),
     E('div', { className: 'grid grid-2' },
       E(MiniLineChart, { data: avgByChampionship, title: 'AVG general por campeonato', valueFormatter: (v) => fmtAvg(v) }),

@@ -1,3 +1,13 @@
+## v6.6.0
+
+- Llaves Face to Face: cards estandarizados con el mismo diseño visual de la vista Continua.
+- Llaves Continua y Face to Face: label Ganador y nombre del ganador en azul claro.
+- Face to Face: card de Campeón/Ganador debajo de la Final con separación aproximada de 3 cm.
+- PDF Face to Face: sizing reducido aproximadamente 12% para mejorar salida de una sola página.
+- Grand Dashboard: agregado card de versión actual de plataforma.
+- Planillas PDF: plantilla base incluye nombre del campeonato y renglones superiores más anchos.
+- README reestructurado con historial completo y comandos actualizados.
+
 
 ## v6.5.0
 
