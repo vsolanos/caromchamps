@@ -23,7 +23,7 @@ function openDb() {
   });
 }
 
-function fileToDataUrl(file) {
+export function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(reader.error || new Error('No fue posible leer el archivo.'));
@@ -32,7 +32,7 @@ function fileToDataUrl(file) {
   });
 }
 
-function readTextIfPossible(file) {
+export function readTextIfPossible(file) {
   return new Promise((resolve) => {
     if (!file || !/text|csv|json|xml|html/i.test(file.type || '') && !/\.(txt|csv|json|xml|html)$/i.test(file.name || '')) {
       resolve('');
@@ -119,7 +119,19 @@ export function extractSheetTextHints(text = '') {
   return { caroms, innings, series, hasTextHints: Boolean(caroms.length || innings.length || series.length) };
 }
 
-export async function saveScoreSheetAttachment({ championshipId, match, matchCode, file, method = 'AUTO_FILENAME', ocrStatus = 'PENDING' }) {
+
+export function dataUrlToFile(dataUrl = '', filename = 'planilla.png', mimeType = 'image/png') {
+  const parts = String(dataUrl || '').split(',');
+  const header = parts[0] || '';
+  const body = parts.slice(1).join(',');
+  const detectedMime = header.match(/data:([^;]+);base64/i)?.[1] || mimeType || 'application/octet-stream';
+  const binary = atob(body || '');
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, { type: detectedMime });
+}
+
+export async function saveScoreSheetAttachment({ championshipId, match, matchCode, file, method = 'AUTO_FILENAME', ocrStatus = 'PENDING', ocrData = null, confidence = null, sourcePage = null, parentFileName = '', extractedImage = false }) {
   const db = await openDb();
   const dataUrl = await fileToDataUrl(file);
   const text = await readTextIfPossible(file);
@@ -137,6 +149,11 @@ export async function saveScoreSheetAttachment({ championshipId, match, matchCod
     association_method: method,
     ocr_status: textHints.hasTextHints ? 'TEXT_HINTS_FOUND' : ocrStatus,
     ocr_hints: textHints,
+    ocr_data: ocrData,
+    confidence,
+    source_page: sourcePage,
+    parent_file_name: parentFileName,
+    extracted_image: Boolean(extractedImage),
     created_at: now
   };
   await new Promise((resolve, reject) => {

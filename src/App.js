@@ -22,6 +22,7 @@ import { OfficialsModule } from './modules/Officials.js';
 import { CloseTournamentModule } from './modules/CloseTournament.js';
 import { AuditModule } from './modules/Audit.js';
 import { RankingModule } from './modules/Ranking.js';
+import { AiSheetsModule } from './modules/AiSheets.js';
 
 function loadState(storageKey = STORAGE_KEY, fallbackKey = '') {
   try {
@@ -41,21 +42,21 @@ function sharedTokenFromLocation() {
   return match?.[1] || '';
 }
 
-const RANKING_BLOCKED_TABS = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
+const RANKING_BLOCKED_TABS = new Set(['groups', 'groupsF2', 'schedule', 'matches', 'aiSheets', 'ko', 'reports', 'officials', 'close']);
 const SIMPLE_ELIMINATION_BLOCKED_TABS = new Set(['groups', 'groupsF2']);
 const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
 const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
-  ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
+  ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['aiSheets', 'Planillas IA', '🤖'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
   ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['feedback', 'Feedback', '💬'], ['audit', 'Auditoría', '◎']
 ];
 
 const GUIDED_NAV_GROUPS = [
   { id: 'start', label: 'Inicio', hint: 'Estado general', tabs: ['dashboard', 'championships'] },
   { id: 'prepare', label: 'Preparar', hint: 'Datos y reglas', tabs: ['players', 'setup', 'groups'] },
-  { id: 'operate', label: 'Operar', hint: 'Agenda y captura', tabs: ['schedule', 'matches'] },
+  { id: 'operate', label: 'Operar', hint: 'Agenda, captura e IA', tabs: ['schedule', 'matches', 'aiSheets'] },
   { id: 'results', label: 'Resultados', hint: 'Llaves y reportes', tabs: ['ko', 'reports', 'ranking', 'close'] },
   { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['config', 'profile', 'admin', 'officials', 'feedback', 'audit'] }
 ];
@@ -81,6 +82,7 @@ const PRO_WORKSPACE_TABS = [
   ['groups', 'Grupos', '▦'],
   ['schedule', 'Calendario', '📅'],
   ['matches', 'Partidas', '●'],
+  ['aiSheets', 'Planillas IA', '🤖'],
   ['ko', 'Llaves', '⑂'],
   ['close', 'Cierre', '✓'],
   ['reports', 'Reportes', '▤']
@@ -1438,6 +1440,7 @@ ${link}`);
       tab === 'groupsF2' && E(GroupsF2Module, shared),
       tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
       tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit, uiTheme }),
+      tab === 'aiSheets' && E(AiSheetsModule, { championship, setChampionship, players, matches, setMatches, audit }),
       tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, setSeeds, audit }),
       tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
       tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),

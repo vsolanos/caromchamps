@@ -149,13 +149,18 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
   const playerMap = Object.fromEntries(players.map((p) => [p.player_id, p]));
   const avgEnabled = usesAverageControl(championship);
 
+  const captureDarkTextColor = '#0F2A5F';
+  const captureDarkBackgroundColor = '#E5E7EB';
   const forceReadableCaptureStyle = uiTheme === 'dark' ? {
-    color: '#0F2A5F',
-    background: '#E5E7EB',
+    color: captureDarkTextColor,
+    backgroundColor: captureDarkBackgroundColor,
+    background: captureDarkBackgroundColor,
     borderColor: '#64748B',
+    WebkitTextFillColor: captureDarkTextColor,
+    caretColor: captureDarkTextColor,
     fontWeight: 950
   } : undefined;
-  const forceReadableCaptureClass = uiTheme === 'dark' ? 'capture-force-readable-input' : '';
+  const forceReadableCaptureClass = uiTheme === 'dark' ? 'capture-force-readable-input capture-dark-blue-field' : '';
   const groupOptions = [...new Set(matches.map((m) => m.group_name).filter(Boolean))];
   const phaseOptions = [...new Set(matches.map((m) => m.phase).filter(Boolean))];
   const roundOptions = getAllRoundOptions(matches).filter((r) => ['R0', 'R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F'].includes(r));

@@ -1,3 +1,25 @@
+
+## v7.0.0
+
+- Nueva funcionalidad **Planillas IA** para carga masiva de PDF e imágenes de planillas firmadas.
+- Nuevo tab operativo **Planillas IA** dentro del campeonato, ubicado entre Partidas y Llaves.
+- Identificación automática de partida por QR, código de partida en archivo, payload estructurado o respuesta de endpoint IA/OCR.
+- Bandeja de revisión IA con estado, confianza, partida detectada, marcador, entradas, SM1, SM2, ganador y tipo de resultado.
+- Asociación automática de cada archivo o imagen extraída a la partida correspondiente como evidencia consultable.
+- Soporte de arquitectura para PDFs multipágina: el endpoint IA/OCR puede retornar una fila por página/partida con imagen extraída.
+- Guardado de resultados por revisión humana y aprobación masiva de lecturas de alta confianza.
+- Reglas de seguridad: partidas ya finalizadas requieren confirmación y auditoría; duplicados se marcan como tales.
+- Control de Promedios = No: la importación IA ignora entradas, pero mantiene carambolas, SM1, SM2, tipo de resultado y ganador.
+- Endpoint IA/OCR configurable por campeonato desde el tab Planillas IA.
+- `README.md`, `CHANGELOG.md`, `package.json` y validación sintáctica actualizados a v7.0.0.
+
+
+## v6.9.5
+
+- Hotfix reforzado en modo oscuro / Tab Partidas: Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual quedan en azul oscuro real `#0F2A5F`.
+- Se agregó clase específica `capture-dark-blue-field` y estilo directo desde `Capture.js` para evitar que reglas globales de tablas, inputs o tarjetas sobrescriban el color.
+- Se mantiene fondo gris claro `#E5E7EB` en los campos críticos para asegurar legibilidad.
+
 ## v6.9.4
 
 - Hotfix: en modo oscuro / tab Partidas se fuerza el color azul oscuro `#0F2A5F` para Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual.

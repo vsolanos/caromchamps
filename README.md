@@ -1,4 +1,9 @@
-# CaromChamps v6.9.4
+# CaromChamps v7.0.0
+
+## CaromChamps v7.0.0
+
+Hotfix de legibilidad para modo oscuro en el Tab Partidas. Los campos críticos de captura quedan forzados en azul oscuro `#0F2A5F`: Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual. Se mantiene fondo gris claro `#E5E7EB` y se refuerza el estilo desde `Capture.js` y `styles.css` para evitar sobrescrituras por estilos globales.
+
 
 ## v6.9.4 - Hotfix de legibilidad en Partidas modo oscuro
 
@@ -96,7 +101,7 @@ Esta versión incorpora ajustes de UX/UI y operación solicitados para mejorar l
 
 ## Versión activa
 
-**CaromChamps v6.9.4** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
+**CaromChamps v7.0.0** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
 
 ### Cambios principales v6.6.0
 
@@ -364,3 +369,48 @@ git push origin v6.6.0
 - Corrección reforzada para que los campos Carambolas, SM1, SM2, Tipo de resultado y Ganador manual muestren texto oscuro real en modo oscuro.
 - Se aplican clases específicas e inline-style desde `Capture.js`, evitando que reglas globales de `.input`, `.completed-row-card` o estilos anteriores vuelvan a pintar los valores en celeste.
 - `Select` acepta ahora `className`, `style` y props adicionales.
+
+
+## v7.0.0 · Planillas IA
+
+Esta versión introduce la funcionalidad **Planillas IA**, orientada a leer planillas firmadas y trasladar resultados a las partidas oficiales mediante revisión humana.
+
+### Capacidades principales
+
+- Carga masiva de archivos PDF, PNG, JPG, JPEG, WEBP y otros formatos de imagen.
+- Identificación de partida por QR, código de partida en nombre de archivo, nombres de jugadores o respuesta de un endpoint IA/OCR.
+- Bandeja de revisión con semáforo de confianza: Alta, Media y Baja.
+- Asociación automática de cada archivo procesado a la partida correspondiente como evidencia.
+- Soporte de arquitectura para PDF multipágina: si un PDF contiene varias planillas, el endpoint IA/OCR puede retornar cada página como imagen asociada a su partida.
+- Guardado de resultados desde la bandeja de revisión y aprobación masiva de lecturas de alta confianza.
+- Auditoría de importaciones, correcciones, partidas finalizadas y errores de lectura.
+
+### Contrato sugerido para endpoint IA/OCR
+
+El tab **Planillas IA** puede trabajar con lectura local limitada o con un backend seguro, por ejemplo Cloudflare Worker. El endpoint debe recibir `files` y `context` por `FormData`, y devolver JSON con una colección `results`.
+
+```json
+{
+  "results": [
+    {
+      "file_name": "planillas.pdf",
+      "page_number": 1,
+      "match_code": "P-005",
+      "caroms_p1": 39,
+      "caroms_p2": 12,
+      "innings_p1": 22,
+      "innings_p2": 22,
+      "s1_p1": 7,
+      "s1_p2": 3,
+      "s2_p1": 0,
+      "s2_p2": 2,
+      "winner_id": "PLAYER_ID",
+      "match_result_type": "NORMAL",
+      "confidence": 0.93,
+      "page_image_data_url": "data:image/png;base64,..."
+    }
+  ]
+}
+```
+
+Cuando `average_control_enabled` es `false`, CaromChamps ignora entradas al aplicar resultados importados, pero mantiene carambolas, SM1, SM2, ganador y tipo de resultado.
