@@ -5318,6 +5318,7 @@ body.printing-groups .aligned-player-submeta {
   font-weight: 950 !important;
 }
 .theme-dark .capture-caroms-cell .input,
+.theme-dark .capture-innings-cell .input,
 .theme-dark .capture-s1-cell .input,
 .theme-dark .capture-s2-cell .input,
 .theme-dark .capture-avg-cell {
@@ -5513,4 +5514,154 @@ body.printing-groups .aligned-player-submeta {
     background: #DBEAFE !important;
     border-color: #93C5FD !important;
   }
+}
+
+
+/* v6.8.0 · Eliminación Simple and capture dark-mode readability adjustments. */
+.theme-dark .capture-caroms-cell .input,
+.theme-dark .capture-innings-cell .input,
+.theme-dark .capture-s1-cell .input,
+.theme-dark .capture-s2-cell .input,
+.theme-dark .match-result-admin-cell select.input,
+.theme-dark .match-result-admin-cell .input {
+  color: #000000 !important;
+  background: #F8FAFC !important;
+  border-color: rgba(15, 23, 42, .35) !important;
+  font-weight: 900 !important;
+}
+.theme-dark .match-result-admin-cell .field-label {
+  color: #000000 !important;
+  font-weight: 900 !important;
+}
+.setup-simple-elimination-info {
+  border-color: rgba(245, 158, 11, .35) !important;
+}
+
+/* v6.9.0 · Feedback tracking and dark-mode capture fields in dark blue. */
+.theme-dark .capture-caroms-cell .input,
+.theme-dark .capture-innings-cell .input,
+.theme-dark .capture-s1-cell .input,
+.theme-dark .capture-s2-cell .input,
+.theme-dark .match-result-admin-cell select.input,
+.theme-dark .match-result-admin-cell .input {
+  color: #0F2A5F !important;
+  background: #F8FAFC !important;
+  border-color: rgba(15, 42, 95, .45) !important;
+  font-weight: 950 !important;
+}
+.theme-dark .match-result-admin-cell .field-label {
+  color: #0F2A5F !important;
+  font-weight: 950 !important;
+}
+.feedback-control-module .feedback-filter-panel {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(8, 47, 73, .22);
+  border: 1px solid rgba(103, 232, 249, .22);
+}
+.theme-light .feedback-control-module .feedback-filter-panel {
+  background: #F0F9FF;
+  border-color: rgba(14, 116, 144, .18);
+}
+.feedback-table-wrap { max-height: 620px; overflow: auto; }
+.feedback-tracking-table th,
+.feedback-tracking-table td { vertical-align: top; }
+.feedback-location-cell { min-width: 220px; font-size: 12px; color: #BAE6FD; }
+.theme-light .feedback-location-cell { color: #0F2A5F; }
+.feedback-comment-cell { min-width: 300px; white-space: normal; line-height: 1.35; }
+.feedback-status-select { min-width: 150px; font-weight: 900; }
+.feedback-status-recibido { color: #0F2A5F !important; }
+.feedback-status-en-revisi-n,
+.feedback-status-priorizado { color: #92400E !important; }
+.feedback-status-en-desarrollo { color: #1D4ED8 !important; }
+.feedback-status-resuelto,
+.feedback-status-cerrado { color: #047857 !important; }
+.feedback-status-rechazado { color: #991B1B !important; }
+
+/* v6.9.1 · Modo oscuro / Tab Partidas: campos deportivos y selectores administrativos en color café claro. */
+.theme-dark .capture-caroms-cell .input,
+.theme-dark .capture-innings-cell .input,
+.theme-dark .capture-s1-cell .input,
+.theme-dark .capture-s2-cell .input,
+.theme-dark .match-result-admin-cell select.input,
+.theme-dark .match-result-admin-cell .input {
+  color: #A16207 !important;
+  background: #F8FAFC !important;
+  border-color: rgba(161, 98, 7, .48) !important;
+  font-weight: 950 !important;
+}
+.theme-dark .match-result-admin-cell .field-label {
+  color: #A16207 !important;
+  font-weight: 950 !important;
+}
+
+/* v6.9.2 · Modo oscuro / Tab Partidas: fondos gris claro para campos deportivos y selectores administrativos. */
+.theme-dark .capture-caroms-cell .input,
+.theme-dark .capture-innings-cell .input,
+.theme-dark .capture-s1-cell .input,
+.theme-dark .capture-s2-cell .input,
+.theme-dark .match-result-admin-cell select.input,
+.theme-dark .match-result-admin-cell .input {
+  color: #A16207 !important;
+  background: #E5E7EB !important;
+  border-color: rgba(161, 98, 7, .52) !important;
+  font-weight: 950 !important;
+}
+.theme-dark .match-result-admin-cell .field-label {
+  color: #A16207 !important;
+  font-weight: 950 !important;
+}
+
+
+
+/* v6.9.3/v6.9.4 · Hotfix: lectura real en modo oscuro para campos críticos de captura.
+   Se aplica clase directa e inline-style desde Capture.js; estas reglas quedan como respaldo
+   para evitar que reglas globales de tabla/tarjeta devuelvan el color celeste anterior. */
+.capture-force-readable-input,
+input.input.capture-force-readable-input,
+select.input.capture-force-readable-input,
+.theme-dark input.input.capture-force-readable-input,
+.theme-dark select.input.capture-force-readable-input,
+.theme-dark .capture-force-readable-admin-cell .input,
+.theme-dark .capture-force-readable-admin-cell select.input {
+  color: #0F2A5F !important;
+  background-color: #E5E7EB !important;
+  border-color: #64748B !important;
+  -webkit-text-fill-color: #0F2A5F !important;
+  caret-color: #0F2A5F !important;
+  font-weight: 950 !important;
+}
+.theme-dark .capture-force-readable-admin-cell .field-label,
+.theme-dark .capture-force-readable-admin-cell .field-label * {
+  color: #0F2A5F !important;
+  -webkit-text-fill-color: #0F2A5F !important;
+  font-weight: 950 !important;
+}
+.theme-dark input.input.capture-force-readable-input::placeholder {
+  color: #1E3A8A !important;
+  -webkit-text-fill-color: #1E3A8A !important;
+}
+
+
+/* v6.9.4 · Modo oscuro / Tab Partidas: azul oscuro forzado para Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual. */
+.theme-dark .capture-caroms-cell input.input.capture-force-readable-input,
+.theme-dark .capture-innings-cell input.input.capture-force-readable-input,
+.theme-dark .capture-s1-cell input.input.capture-force-readable-input,
+.theme-dark .capture-s2-cell input.input.capture-force-readable-input,
+.theme-dark .match-result-admin-cell select.input.capture-force-readable-input,
+.theme-dark .match-result-admin-cell .input.capture-force-readable-input,
+.theme-dark .capture-force-readable-admin-cell select.input,
+.theme-dark .capture-force-readable-admin-cell .input {
+  color: #0F2A5F !important;
+  -webkit-text-fill-color: #0F2A5F !important;
+  background-color: #E5E7EB !important;
+  border-color: #64748B !important;
+  caret-color: #0F2A5F !important;
+  font-weight: 950 !important;
+}
+.theme-dark .capture-force-readable-admin-cell .field-label,
+.theme-dark .capture-force-readable-admin-cell .field-label * {
+  color: #0F2A5F !important;
+  -webkit-text-fill-color: #0F2A5F !important;
+  font-weight: 950 !important;
 }

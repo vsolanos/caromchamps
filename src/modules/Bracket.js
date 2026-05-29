@@ -5,6 +5,7 @@ import { PlayerHistoryTrigger } from '../components/PlayerHistory.js';
 import { startPdfPrint } from '../lib/print.js';
 import {
   autoFillMatches,
+  createEliminationSimpleSeeds,
   generateBracketStructure,
   generateMainBracketAfterPre,
   generateInitialRoundFromSeeds,
@@ -630,7 +631,7 @@ function FaceToFaceView({ matches, playerMap, championship = {} }) {
 }
 
 
-export function BracketModule({ championship, players, matches, setMatches, seeds, audit }) {
+export function BracketModule({ championship, players, matches, setMatches, seeds, setSeeds, audit }) {
   const [view, setView] = useState('tabular');
   const [pageSize, setPageSize] = useState(championship.global_settings?.pdf_default_page_size || 'A3');
   const [orientation, setOrientation] = useState(championship.global_settings?.pdf_default_orientation || 'landscape');
@@ -644,6 +645,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   const preMatches = matches.filter((m) => m.phase === 'PRE_ELIMINATION').sort((a, b) => (a.bracket_order || 0) - (b.bracket_order || 0));
   const koMatches = matches.filter((m) => m.phase === 'KO').sort((a, b) => roundOrder(a.ko_round) - roundOrder(b.ko_round) || (a.bracket_order || 0) - (b.bracket_order || 0));
   const allElimination = useMemo(() => [...preMatches, ...koMatches], [preMatches, koMatches]);
+  const isSimpleElimination = (championship?.championship_type || 'NORMAL') === 'ELIMINACION_SIMPLE';
   const activePreMatches = preMatches.filter((m) => m.match_status !== 'PLANNED');
   const activeKoMatches = koMatches.filter((m) => m.match_status !== 'PLANNED');
   const nextRoundButtonLabel = activePreMatches.length && !activeKoMatches.length ? 'Generar bracket principal' : 'Generar siguiente ronda';
@@ -655,7 +657,25 @@ export function BracketModule({ championship, players, matches, setMatches, seed
   };
 
   const replaceEliminationMatches = (newMatches) => setMatches([...matches.filter((m) => !['PRE_ELIMINATION', 'KO'].includes(m.phase)), ...newMatches]);
+  const generateSimpleEliminationStructure = (reason = 'GENERATE') => {
+    const played = allElimination.some((m) => m.match_status === 'COMPLETED' || m.winner_id);
+    if (played && !window.confirm('Ya existen partidas realizadas. Regenerar la estructura eliminará la llave actual y puede afectar resultados registrados. ¿Desea continuar?')) {
+      notify('Regeneración cancelada: existen partidas realizadas.', 'warning');
+      return;
+    }
+    const { seeds: generatedSeeds, warnings } = createEliminationSimpleSeeds(championship, players, `${reason}-${Date.now()}`);
+    if (generatedSeeds.length < 4) return alert('Eliminación Simple requiere al menos 4 jugadores seleccionados.');
+    const start = Math.max(0, ...matches.filter((m) => !['PRE_ELIMINATION', 'KO'].includes(m.phase)).map((m) => Number(m.match_number || 0))) + 1;
+    const structure = generateBracketStructure(championship, generatedSeeds, start);
+    if (structure.type === 'ERROR') return alert(structure.message);
+    setSeeds?.(generatedSeeds);
+    replaceEliminationMatches([...structure.preMatches, ...structure.koMatches]);
+    const warningText = warnings.length ? ` Advertencias: ${warnings.join(' · ')}` : '';
+    audit(reason === 'REGENERATE' ? 'SIMPLE_BRACKET_REGENERATED' : 'SIMPLE_BRACKET_GENERATED', `${structure.message}${warningText}`);
+    notify(`${reason === 'REGENERATE' ? 'Estructura regenerada' : 'Estructura generada'} para Eliminación Simple. ${structure.message}${warningText}`, warnings.length ? 'warning' : 'success');
+  };
   const generateInitial = () => {
+    if (isSimpleElimination) return generateSimpleEliminationStructure('GENERATE');
     if (!seeds.length) return alert('Primero clasifique grupos.');
     const start = Math.max(0, ...matches.map((m) => Number(m.match_number || 0))) + 1;
     const structure = generateBracketStructure(championship, seeds, start);
@@ -767,7 +787,8 @@ export function BracketModule({ championship, players, matches, setMatches, seed
       E('div', { className: 'toolbar', style: { justifyContent: 'space-between' } },
         E(SectionTitle, { title: 'Llaves / Bracket', subtitle: 'Visualizaciones oficiales con foto, bandera, marcador, entradas y promedio por partida.' }),
         E('div', { className: 'toolbar' },
-          E(Button, { onClick: generateInitial }, 'Generar estructura'),
+          E(Button, { onClick: generateInitial }, isSimpleElimination ? 'Generar estructura aleatoria' : 'Generar estructura'),
+          isSimpleElimination ? E(Button, { onClick: () => generateSimpleEliminationStructure('REGENERATE'), kind: 'warning' }, 'Regenerar estructura') : null,
           E(Button, { onClick: fillCurrent, kind: 'success' }, 'Resultados ronda activa'),
           E(Button, { onClick: generateNext, kind: 'success' }, nextRoundButtonLabel),
           E(Button, { onClick: exportCurrentViewPdf, kind: 'soft' }, 'Generar PDF'),
@@ -796,7 +817,7 @@ export function BracketModule({ championship, players, matches, setMatches, seed
     ),
     E('section', { className: 'bracket-print-scope', ref: printAreaRef },
       E(PdfDocument, { title: 'Llaves / Bracket', subtitle: `Vista ${view === 'tabular' ? 'Tabular' : view === 'continuous' ? 'Continua' : 'Face to Face'}`, championship, meta: [`Clasificados: ${seeds.length}`, `Partidas: ${allElimination.length}`] },
-      !allElimination.length ? E(EmptyState, { title: 'Sin bracket', message: 'Clasifique grupos y genere la estructura de eliminación directa.' }) : null,
+      !allElimination.length ? E(EmptyState, { title: 'Sin bracket', message: isSimpleElimination ? 'Seleccione jugadores en Campeonato y genere la estructura aleatoria de Eliminación Simple.' : 'Clasifique grupos y genere la estructura de eliminación directa.' }) : null,
       allElimination.length && view === 'tabular' ? E(TabularView, { matches: allElimination, playerMap }) : null,
       allElimination.length && canZoomBracket ? E('div', { className: 'bracket-zoom-viewport', style: { '--visual-zoom': visualZoom, '--visual-zoom-width': `${100 / visualZoom}%` } },
         E('div', { className: 'bracket-zoom-content' },

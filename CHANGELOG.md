@@ -1,3 +1,51 @@
+## v6.9.4
+
+- Hotfix: en modo oscuro / tab Partidas se fuerza el color azul oscuro `#0F2A5F` para Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual.
+- Se agrega estilo directo a Entradas en `Capture.js`, quedando alineado con Carambolas, SM1 y SM2.
+- Se refuerzan reglas CSS de alta especificidad para evitar que estilos globales sobrescriban el color solicitado.
+
+
+## v6.9.3
+
+- Hotfix en modo oscuro / Tab Partidas: se fuerza color oscuro real `#111827` para Carambolas, SM1, SM2, Tipo de resultado y Ganador manual.
+- Se agregan clases directas y estilo inline desde `Capture.js` para evitar que reglas globales de tarjetas o inputs restauren el color celeste anterior.
+- `Select` ahora acepta `className`, `style` y props adicionales para permitir estilos controlados en campos críticos.
+
+
+## v6.9.2
+
+- Ajuste visual en modo oscuro / Tab Partidas: los campos de Carambolas, SM1, SM2, Tipo de resultado y Ganador manual mantienen texto café claro y ahora usan fondo gris claro para mejorar legibilidad y consistencia visual.
+
+
+## v6.9.1
+
+- Hotfix visual en modo oscuro para el Tab Partidas.
+- Los textos de Carambolas, SM1, SM2, Tipo de resultado y Ganador manual se ajustan a color café claro.
+- Se mantiene fondo claro en estos campos para asegurar legibilidad en modo oscuro.
+
+# Changelog
+
+## v6.9.0
+
+- Partidas / modo oscuro: carambolas, SM1, SM2, tipo de resultado y ganador manual cambian de negro a azul oscuro para mantener mejor contraste visual.
+- Plataforma: se agrega menú **Feedback** en el panel izquierdo para dar seguimiento a mejoras, bugs y observaciones registradas desde el botón flotante.
+- Feedback: cada registro ahora maneja estado editable manualmente: Recibido, En revisión, Priorizado, En desarrollo, Resuelto, Cerrado o Rechazado.
+- Feedback: nueva vista de control con filtros por estado, tipo y búsqueda textual, más resumen de total, recibidos, en proceso y cerrados/resueltos.
+- Campeonato / Eliminación Simple: en el tab Campeonato se ocultan campos de configuración de grupos y clasificación F2 que no aplican a esta modalidad.
+- Campeonato / Eliminación Simple: se reemplazan los cards de Grupos estimados y Clasificados F2 por información propia de llave directa aleatoria + cabezas de serie.
+
+
+## v6.8.0
+
+- Partidas / modo oscuro: carambolas, SM1, SM2, tipo de resultado y ganador manual se muestran con texto negro y fondo claro.
+- Nuevo tipo de campeonato `ELIMINACION_SIMPLE`.
+- Eliminación Simple oculta el tab Grupos y permite enviar todos los jugadores seleccionados directamente a llaves.
+- Llaves: generación de estructura aleatoria para Eliminación Simple, usando la misma lógica de bracket, R0 y números mágicos existente.
+- Llaves: nuevo botón **Regenerar estructura** para Eliminación Simple, con advertencia si ya existen partidas realizadas.
+- Si un jugador tiene No CBZ / cabeza de serie en el campeonato, se respeta su posición; los demás jugadores se asignan aleatoriamente.
+- Doble Fase Grupos: el tab Grupos F2 queda visible automáticamente al seleccionar este tipo de campeonato.
+- Setup: tarjeta informativa para explicar el comportamiento operativo de Eliminación Simple.
+
 
 ## v6.7.2
 

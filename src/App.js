@@ -42,13 +42,14 @@ function sharedTokenFromLocation() {
 }
 
 const RANKING_BLOCKED_TABS = new Set(['groups', 'schedule', 'matches', 'ko', 'reports', 'officials', 'close']);
+const SIMPLE_ELIMINATION_BLOCKED_TABS = new Set(['groups', 'groupsF2']);
 const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
 const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
   ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
-  ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['audit', 'Auditoría', '◎']
+  ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['feedback', 'Feedback', '💬'], ['audit', 'Auditoría', '◎']
 ];
 
 const GUIDED_NAV_GROUPS = [
@@ -56,7 +57,7 @@ const GUIDED_NAV_GROUPS = [
   { id: 'prepare', label: 'Preparar', hint: 'Datos y reglas', tabs: ['players', 'setup', 'groups'] },
   { id: 'operate', label: 'Operar', hint: 'Agenda y captura', tabs: ['schedule', 'matches'] },
   { id: 'results', label: 'Resultados', hint: 'Llaves y reportes', tabs: ['ko', 'reports', 'ranking', 'close'] },
-  { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['config', 'profile', 'admin', 'officials', 'audit'] }
+  { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['config', 'profile', 'admin', 'officials', 'feedback', 'audit'] }
 ];
 
 const PRO_PRIMARY_TABS = [
@@ -70,6 +71,7 @@ const PRO_ADMIN_TABS = [
   ['config', 'Configuración', '⚙'],
   ['profile', 'Perfil', '☻'],
   ['admin', 'Mantenimiento', '🛠'],
+  ['feedback', 'Feedback', '💬'],
   ['audit', 'Auditoría', '◎']
 ];
 
@@ -92,8 +94,10 @@ function getTabMeta(id) {
 }
 
 function visibleTabsForChampionship(championship) {
-  const isRanking = (championship?.championship_type || 'NORMAL') === 'RANKING';
-  return isRanking ? NAV_TABS.filter(([id]) => !RANKING_BLOCKED_TABS.has(id)) : NAV_TABS;
+  const type = championship?.championship_type || 'NORMAL';
+  if (type === 'RANKING') return NAV_TABS.filter(([id]) => !RANKING_BLOCKED_TABS.has(id));
+  if (type === 'ELIMINACION_SIMPLE') return NAV_TABS.filter(([id]) => !SIMPLE_ELIMINATION_BLOCKED_TABS.has(id));
+  return NAV_TABS;
 }
 
 function ModeButtons({ uxMode, setUxMode, compact = false }) {
@@ -129,7 +133,7 @@ function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
   const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const submit = () => {
     if (!form.comment.trim()) return alert('Agregue el comentario, mejora o bug identificado.');
-    onSubmit?.({ ...form, championship_id: championship?.championship_id || '', championship_name: championship?.name || '', created_at: formatDateTimeEs(new Date()) });
+    onSubmit?.({ ...form, status: 'Recibido', championship_id: championship?.championship_id || '', championship_name: championship?.name || '', created_at: formatDateTimeEs(new Date()) });
     setOpen(false);
     setForm({ ...defaultLocation, type: 'Mejora', comment: '' });
     alert('Feedback registrado en Auditoría.');
@@ -254,6 +258,69 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
     E('div', { className: 'side-profile-actions' },
       E(Button, { onClick: () => navigate('profile'), kind: tab === 'profile' ? 'primary' : 'soft', title: 'Ajustes de perfil' }, collapsed ? '☻' : 'Perfil'),
       E(Button, { onClick: auth?.signOut, kind: 'danger', title: 'Cerrar sesión' }, collapsed ? '⏻' : 'Cerrar sesión')
+    )
+  );
+}
+
+
+const FEEDBACK_STATUSES = ['Recibido', 'En revisión', 'Priorizado', 'En desarrollo', 'Resuelto', 'Cerrado', 'Rechazado'];
+
+function FeedbackControlModule({ items, setItems, championship, setTab }) {
+  const [filters, setFilters] = useState({ status: 'ALL', type: 'ALL', text: '' });
+  const feedbackItems = (items || []).filter((item) => item.feedback || String(item.type || '').startsWith('FEEDBACK_'));
+  const feedbackTypes = ['ALL', ...new Set(feedbackItems.map((item) => item.feedback?.type || String(item.type || '').replace(/^FEEDBACK_/, '').replace(/_/g, ' ')).filter(Boolean))];
+  const normalizedText = String(filters.text || '').toLowerCase();
+  const visible = feedbackItems.filter((item) => {
+    const feedback = item.feedback || {};
+    const status = feedback.status || item.status || 'Recibido';
+    const type = feedback.type || String(item.type || '').replace(/^FEEDBACK_/, '').replace(/_/g, ' ');
+    const haystack = `${item.detail || ''} ${feedback.comment || ''} ${feedback.interfaceName || ''} ${feedback.menu || ''} ${feedback.tab || ''} ${feedback.section || ''} ${feedback.championship_name || ''}`.toLowerCase();
+    return (filters.status === 'ALL' || status === filters.status)
+      && (filters.type === 'ALL' || type === filters.type)
+      && (!normalizedText || haystack.includes(normalizedText));
+  });
+  const counts = Object.fromEntries(FEEDBACK_STATUSES.map((status) => [status, feedbackItems.filter((item) => (item.feedback?.status || item.status || 'Recibido') === status).length]));
+  const updateStatus = (itemId, status) => setItems((prev) => prev.map((item) => item.id === itemId ? {
+    ...item,
+    status,
+    updated_at: formatDateTimeEs(new Date()),
+    feedback: { ...(item.feedback || {}), status, updated_at: formatDateTimeEs(new Date()) }
+  } : item));
+  return E('div', { className: 'grid feedback-control-module' },
+    E(Card, null,
+      E(SectionTitle, { title: 'Control de Feedback', subtitle: 'Seguimiento manual de mejoras, bugs y observaciones registradas desde cualquier pantalla de CaromChamps.' }),
+      E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
+        E(Stat, { label: 'Feedback total', value: feedbackItems.length }),
+        E(Stat, { label: 'Recibidos', value: counts['Recibido'] || 0 }),
+        E(Stat, { label: 'En proceso', value: (counts['En revisión'] || 0) + (counts['Priorizado'] || 0) + (counts['En desarrollo'] || 0) }),
+        E(Stat, { label: 'Cerrados / resueltos', value: (counts['Resuelto'] || 0) + (counts['Cerrado'] || 0) })
+      ),
+      E('div', { className: 'grid grid-4 feedback-filter-panel', style: { marginTop: 14 } },
+        E(Field, { label: 'Estado' }, E(Select, { value: filters.status, onChange: (event) => setFilters({ ...filters, status: event.target.value }) }, ['ALL', ...FEEDBACK_STATUSES].map((status) => E('option', { key: status, value: status }, status === 'ALL' ? 'Todos' : status)))),
+        E(Field, { label: 'Tipo' }, E(Select, { value: filters.type, onChange: (event) => setFilters({ ...filters, type: event.target.value }) }, feedbackTypes.map((type) => E('option', { key: type, value: type }, type === 'ALL' ? 'Todos' : type)))),
+        E(Field, { label: 'Buscar' }, E(Input, { value: filters.text, onChange: (event) => setFilters({ ...filters, text: event.target.value }), placeholder: 'Menú, tab, sección, comentario...' })),
+        E(Field, { label: 'Acción rápida' }, E(Button, { kind: 'soft', onClick: () => setTab?.('audit') }, 'Ver Auditoría completa'))
+      )
+    ),
+    !visible.length ? E(EmptyState, { title: 'Sin feedback con esos filtros', message: 'Use el botón flotante Feedback para registrar mejoras o bugs desde la ubicación actual.' }) : E(Card, null,
+      E('div', { className: 'table-wrap feedback-table-wrap' }, E('table', { className: 'feedback-tracking-table' },
+        E('thead', null, E('tr', null, ['Fecha', 'Estado', 'Tipo', 'Campeonato', 'Ubicación', 'Comentario', 'Última actualización'].map((header) => E('th', { key: header }, header)))),
+        E('tbody', null, visible.map((item) => {
+          const feedback = item.feedback || {};
+          const status = feedback.status || item.status || 'Recibido';
+          const type = feedback.type || String(item.type || '').replace(/^FEEDBACK_/, '').replace(/_/g, ' ');
+          const location = `${feedback.interfaceName || '-'} / ${feedback.menu || '-'} / ${feedback.tab || '-'} / ${feedback.section || '-'}`;
+          return E('tr', { key: item.id },
+            E('td', null, item.timestamp || feedback.created_at || '-'),
+            E('td', null, E(Select, { value: status, onChange: (event) => updateStatus(item.id, event.target.value), className: `feedback-status-select feedback-status-${status.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` }, FEEDBACK_STATUSES.map((state) => E('option', { key: state, value: state }, state)))),
+            E('td', null, E(Badge, { kind: type === 'Bug' ? 'danger' : type === 'Mejora' ? 'success' : 'info' }, type)),
+            E('td', null, feedback.championship_name || (item.championship_id === championship?.championship_id ? championship?.name : item.championship_id) || '-'),
+            E('td', { className: 'feedback-location-cell' }, location),
+            E('td', { className: 'feedback-comment-cell' }, feedback.comment || String(item.detail || '').split('·').slice(1).join('·').trim() || item.detail || '-'),
+            E('td', null, feedback.updated_at || item.updated_at || '-')
+          );
+        }))
+      ))
     )
   );
 }
@@ -755,14 +822,16 @@ function ProWorkspaceTabs({ tab, setTab, championship }) {
   const type = championship?.championship_type || 'NORMAL';
   const isRanking = type === 'RANKING';
   const isDoubleGroups = type === 'DOBLE_FASE_GRUPOS';
-  const showGroupsF2 = isDoubleGroups && (championship?.status === 'GROUPS_F2_READY' || championship?.status === 'GROUPS_F2_CLOSED' || Array.isArray(championship?.groups_f2));
+  const isSimpleElimination = type === 'ELIMINACION_SIMPLE';
+  const showGroupsF2 = isDoubleGroups;
+  const baseTabs = isSimpleElimination ? PRO_WORKSPACE_TABS.filter(([id]) => id !== 'groups') : PRO_WORKSPACE_TABS;
   const tabs = isRanking
     ? [['dashboard', 'Dashboard', '⌂'], ['setup', 'Campeonato', '⚙'], ['ranking', 'Ranking', '★'], ['reports', 'Reportes', '▤']]
-    : PRO_WORKSPACE_TABS.flatMap((item) => item[0] === 'groups' && showGroupsF2 ? [item, PRO_DOUBLE_GROUPS_TAB] : [item]);
+    : baseTabs.flatMap((item) => item[0] === 'groups' && showGroupsF2 ? [item, PRO_DOUBLE_GROUPS_TAB] : [item]);
   return E(Card, { className: 'pro-workspace-tabs-card pro-workspace-tabs-sticky' },
     E('div', { className: 'pro-workspace-title' },
       E('div', null, E('span', { className: 'ux-kicker' }, 'Campeonato activo'), E('h2', null, championship?.name || 'Sin campeonato seleccionado')),
-      E(Badge, { kind: isRanking ? 'warning' : isDoubleGroups ? 'success' : 'info' }, isRanking ? 'RANKING' : isDoubleGroups ? 'DOBLE FASE GRUPOS' : 'NORMAL')
+      E(Badge, { kind: isRanking ? 'warning' : isDoubleGroups ? 'success' : isSimpleElimination ? 'warning' : 'info' }, isRanking ? 'RANKING' : isDoubleGroups ? 'DOBLE FASE GRUPOS' : isSimpleElimination ? 'ELIMINACIÓN SIMPLE' : 'NORMAL')
     ),
     E('div', { className: 'pro-workspace-tabs pro-process-tabs' }, tabs.map(([id, label, icon], index) => E('button', { key: id, type: 'button', className: `${tab === id ? 'active' : ''} ${index < tabs.length - 1 ? 'has-next' : ''}`, onClick: () => setTab(id) }, E('span', { className: 'pro-tab-index' }, index + 1), E('span', { className: 'pro-tab-icon' }, icon), E('b', null, label))))
   );
@@ -849,7 +918,7 @@ function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
     E('div', { className: 'ux-stepper pro-wizard-steps' }, steps.map((label, index) => E('button', { key: label, className: `ux-step ${index === step ? 'active' : index < step ? 'done' : ''}`, onClick: () => setStep(index) }, E('span', null, index + 1), E('b', null, label)))),
     step === 0 ? E('div', { className: 'grid grid-2 pro-form-grid' },
       E('label', null, 'Nombre', E('input', { value: form.name, onChange: (e) => update('name', e.target.value) })),
-      E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: type === 'RANKING', onChange: (e) => update('championship_type', e.target.value) }, type === 'RANKING' ? [E('option', { key: 'RANKING', value: 'RANKING' }, 'Ranking')] : [E('option', { key: 'NORMAL', value: 'NORMAL' }, 'Normal'), E('option', { key: 'DOBLE_FASE_GRUPOS', value: 'DOBLE_FASE_GRUPOS' }, 'Doble Fase Grupos')])),
+      E('label', null, 'Tipo', E('select', { value: form.championship_type, disabled: type === 'RANKING', onChange: (e) => update('championship_type', e.target.value) }, type === 'RANKING' ? [E('option', { key: 'RANKING', value: 'RANKING' }, 'Ranking')] : [E('option', { key: 'NORMAL', value: 'NORMAL' }, 'Normal'), E('option', { key: 'DOBLE_FASE_GRUPOS', value: 'DOBLE_FASE_GRUPOS' }, 'Doble Fase Grupos'), E('option', { key: 'ELIMINACION_SIMPLE', value: 'ELIMINACION_SIMPLE' }, 'Eliminación Simple')])),
       E('label', null, 'División', E('select', { value: form.division_filter, onChange: (e) => update('division_filter', e.target.value) }, ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL', 'NA'].map((value) => E('option', { key: value, value }, value)))),
       E('label', null, 'Control de promedios', E('select', { value: form.average_control_enabled, onChange: (e) => update('average_control_enabled', e.target.value) }, ['SI', 'NO'].map((value) => E('option', { key: value, value }, value)))),
       E('label', null, 'Estado inicial', E('input', { value: 'DRAFT', disabled: true }))
@@ -1114,8 +1183,10 @@ function AppShell({ auth }) {
   }, [tab]);
 
   useEffect(() => {
+    const type = championship?.championship_type || 'NORMAL';
     if (isRankingChampionship && RANKING_BLOCKED_TABS.has(tab)) setTab('ranking');
-  }, [isRankingChampionship, tab]);
+    if (type === 'ELIMINACION_SIMPLE' && SIMPLE_ELIMINATION_BLOCKED_TABS.has(tab)) setTab('ko');
+  }, [isRankingChampionship, championship?.championship_type, tab]);
 
   useEffect(() => {
     const nextTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
@@ -1218,7 +1289,7 @@ function AppShell({ auth }) {
       ...DEFAULT_CHAMPIONSHIP,
       championship_id: nextId,
       name: String(form.name || (isRanking ? 'Nuevo Ranking' : 'Nuevo Campeonato')).trim(),
-      championship_type: isRanking ? 'RANKING' : ((form.championship_type || 'NORMAL') === 'DOBLE_FASE_GRUPOS' ? 'DOBLE_FASE_GRUPOS' : 'NORMAL'),
+      championship_type: isRanking ? 'RANKING' : (['DOBLE_FASE_GRUPOS', 'ELIMINACION_SIMPLE'].includes(form.championship_type || 'NORMAL') ? form.championship_type : 'NORMAL'),
       venue_name: form.venue_name || DEFAULT_CHAMPIONSHIP.venue_name,
       start_date: form.start_date || DEFAULT_CHAMPIONSHIP.start_date,
       end_date: form.end_date || form.start_date || DEFAULT_CHAMPIONSHIP.end_date,
@@ -1332,7 +1403,8 @@ ${link}`);
       detail: `${location} · ${feedback.comment}`,
       timestamp: feedback.created_at || formatDateTimeEs(new Date()),
       championship_id: feedback.championship_id || championship.championship_id,
-      feedback
+      status: feedback.status || 'Recibido',
+      feedback: { ...feedback, status: feedback.status || 'Recibido' }
     }, ...prev]);
   };
 
@@ -1365,14 +1437,15 @@ ${link}`);
       tab === 'groups' && E(GroupsModule, shared),
       tab === 'groupsF2' && E(GroupsF2Module, shared),
       tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
-      tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit }),
-      tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, audit }),
+      tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit, uiTheme }),
+      tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, setSeeds, audit }),
       tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
       tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),
       tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
       tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
       tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),
       tab === 'close' && E(CloseTournamentModule, { championship, setChampionship, players, setPlayers, matches, setMatches, seeds, audit }),
+      tab === 'feedback' && E(FeedbackControlModule, { items, setItems, championship, setTab }),
       tab === 'audit' && E(AuditModule, { items }),
       tab === 'profile' && E(ProfileSettings, { auth, onProfileUpdated: auth?.updateProfile })
     ),

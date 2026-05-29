@@ -133,7 +133,7 @@ function ScoreSheetsPrintDocument({ championship, matches, playerMap, logoMode }
   );
 }
 
-export function CaptureModule({ championship, players, matches, setMatches, audit }) {
+export function CaptureModule({ championship, players, matches, setMatches, audit, uiTheme = 'light' }) {
   const [filters, setFilters] = useState({ phase: 'ALL', round: 'ALL', group: 'ALL', status: 'ALL', player: 'ALL', table: 'ALL', date: 'ALL', conflict: 'ALL', official: 'ALL' });
   const [selectedIds, setSelectedIds] = useState([]);
   const [reason, setReason] = useState('Corrección operativa autorizada');
@@ -148,6 +148,14 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
   const [uploadSummary, setUploadSummary] = useState('');
   const playerMap = Object.fromEntries(players.map((p) => [p.player_id, p]));
   const avgEnabled = usesAverageControl(championship);
+
+  const forceReadableCaptureStyle = uiTheme === 'dark' ? {
+    color: '#0F2A5F',
+    background: '#E5E7EB',
+    borderColor: '#64748B',
+    fontWeight: 950
+  } : undefined;
+  const forceReadableCaptureClass = uiTheme === 'dark' ? 'capture-force-readable-input' : '';
   const groupOptions = [...new Set(matches.map((m) => m.group_name).filter(Boolean))];
   const phaseOptions = [...new Set(matches.map((m) => m.phase).filter(Boolean))];
   const roundOptions = getAllRoundOptions(matches).filter((r) => ['R0', 'R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F'].includes(r));
@@ -238,10 +246,10 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     const activeDataClass = (value) => String(value ?? '').trim() !== '' ? 'match-active-data-cell has-result-data' : 'match-active-data-cell';
     const cells = [
       E('td', { className: 'player-name capture-player-name-cell', key: 'player' }, playerMap[playerId] ? E(PlayerHistoryTrigger, { player: playerMap[playerId] }) : (isPlanned ? 'Por definir' : '')),
-      E('td', { key: 'caroms', className: `${activeDataClass(caromsValue)} capture-caroms-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: caromsValue, onChange: (e) => patchKey(isP1 ? 'caroms_p1' : 'caroms_p2', e.target.value) })),
-      avgEnabled ? E('td', { key: 'innings', className: `${activeDataClass(inningsValue)} capture-innings-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })) : null,
-      E('td', { key: 's1', className: `${activeDataClass(s1Value)} capture-s1-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
-      E('td', { key: 's2', className: `${activeDataClass(s2Value)} capture-s2-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
+      E('td', { key: 'caroms', className: `${activeDataClass(caromsValue)} capture-caroms-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: caromsValue, className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => patchKey(isP1 ? 'caroms_p1' : 'caroms_p2', e.target.value) })),
+      avgEnabled ? E('td', { key: 'innings', className: `${activeDataClass(inningsValue)} capture-innings-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })) : null,
+      E('td', { key: 's1', className: `${activeDataClass(s1Value)} capture-s1-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
+      E('td', { key: 's2', className: `${activeDataClass(s2Value)} capture-s2-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
     ];
     if (!['GROUPS', 'GROUPS_F2'].includes(match.phase)) {
       const penaltiesValue = isP1 ? match.penalties_p1 : match.penalties_p2;
@@ -440,8 +448,8 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
         ),
         renderMatchScoreSheetControls(match),
         E('div', { className: 'grid grid-4', style: { marginTop: 10 } },
-          E('div', { className: 'match-active-data-cell has-result-data match-result-admin-cell' }, E(Field, { label: 'Tipo resultado' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.match_result_type === 'PENALTIES' && ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? 'NORMAL' : (match.match_result_type || 'NORMAL'), onChange: (e) => update(match.match_id, { match_result_type: e.target.value, penalties_p1: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p1, penalties_p2: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p2 }) }, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? ['NORMAL', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL'] : ['NORMAL', 'PENALTIES', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL']).map((x) => E('option', { key: x }, x))))),
-          E('div', { className: 'match-active-data-cell has-result-data match-result-admin-cell' }, E(Field, { label: 'Ganador manual' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.winner_id || '', onChange: (e) => update(match.match_id, { winner_id: e.target.value }) }, E('option', { value: '' }, 'Auto'), E('option', { value: match.player1_id }, playerName(playerMap[match.player1_id])), E('option', { value: match.player2_id }, playerName(playerMap[match.player2_id]))))),
+          E('div', { className: `match-active-data-cell has-result-data match-result-admin-cell ${uiTheme === 'dark' ? 'capture-force-readable-admin-cell' : ''}`.trim() }, E(Field, { label: 'Tipo resultado' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.match_result_type === 'PENALTIES' && ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? 'NORMAL' : (match.match_result_type || 'NORMAL'), className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => update(match.match_id, { match_result_type: e.target.value, penalties_p1: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p1, penalties_p2: ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? '' : match.penalties_p2 }) }, (['GROUPS', 'GROUPS_F2'].includes(match.phase) ? ['NORMAL', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL'] : ['NORMAL', 'PENALTIES', 'WALKOVER', 'ADMINISTRATIVE_WIN', 'WITHDRAWAL']).map((x) => E('option', { key: x }, x))))),
+          E('div', { className: `match-active-data-cell has-result-data match-result-admin-cell ${uiTheme === 'dark' ? 'capture-force-readable-admin-cell' : ''}`.trim() }, E(Field, { label: 'Ganador manual' }, E(Select, { disabled: match.match_status === 'PLANNED', value: match.winner_id || '', className: forceReadableCaptureClass, style: forceReadableCaptureStyle, onChange: (e) => update(match.match_id, { winner_id: e.target.value }) }, E('option', { value: '' }, 'Auto'), E('option', { value: match.player1_id }, playerName(playerMap[match.player1_id])), E('option', { value: match.player2_id }, playerName(playerMap[match.player2_id]))))),
           E(Field, { label: 'Árbitro/Capturista' }, E(Input, { disabled: match.match_status === 'PLANNED', value: match.assigned_official || '', onChange: (e) => update(match.match_id, { assigned_official: e.target.value }), placeholder: 'Nombre' })),
           E('div', { className: 'toolbar', style: { alignItems: 'end' } }, E(Button, { onClick: () => saveOne(match), kind: 'success', disabled: match.match_status === 'PLANNED' }, match.match_status === 'PLANNED' ? 'Planificada' : 'Guardar'), E(Button, { onClick: () => reopen(match), kind: 'warning' }, 'Reabrir'))
         ),

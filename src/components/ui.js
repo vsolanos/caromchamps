@@ -14,8 +14,8 @@ export function Input(props) {
   return E('input', { ...props, className: `input ${props.className || ''}`.trim() });
 }
 
-export function Select({ value, onChange, children, disabled = false }) {
-  return E('select', { value, onChange, disabled, className: 'input' }, children);
+export function Select({ value, onChange, children, disabled = false, className = '', ...props }) {
+  return E('select', { ...props, value, onChange, disabled, className: `input ${className}`.trim() }, children);
 }
 
 export function Field({ label, children, hint }) {

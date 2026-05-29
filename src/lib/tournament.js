@@ -100,6 +100,44 @@ export function shuffle(items, seed) {
   return arr;
 }
 
+export function createEliminationSimpleSeeds(championship = {}, players = [], seedSuffix = '') {
+  const eligible = getEligiblePlayers(championship, players);
+  const total = eligible.length;
+  const seedMap = championship.participant_seeds || {};
+  const warnings = [];
+  const usedPositions = new Set();
+  const slots = Array.from({ length: total }, () => null);
+  const withSeed = [];
+  const withoutSeed = [];
+
+  eligible.forEach((player) => {
+    const rawSeed = seedMap[player.player_id] ?? player.seed_number;
+    const seedNumber = rawSeed === '' || rawSeed === null || rawSeed === undefined ? null : num(rawSeed, null);
+    if (seedNumber && seedNumber >= 1 && seedNumber <= total && !usedPositions.has(seedNumber)) {
+      usedPositions.add(seedNumber);
+      withSeed.push({ player, seedNumber });
+      return;
+    }
+    if (seedNumber && (seedNumber < 1 || seedNumber > total)) warnings.push(`${playerName(player)} tiene cabeza #${seedNumber}, fuera del rango 1-${total}; se asigna aleatoriamente.`);
+    if (seedNumber && usedPositions.has(seedNumber)) warnings.push(`${playerName(player)} tiene cabeza #${seedNumber} duplicada; se asigna aleatoriamente.`);
+    withoutSeed.push(player);
+  });
+
+  withSeed
+    .sort((a, b) => a.seedNumber - b.seedNumber || playerName(a.player).localeCompare(playerName(b.player)))
+    .forEach(({ player, seedNumber }) => { slots[seedNumber - 1] = { player, seed_position: seedNumber, qualification_type: 'DIRECT_SIMPLE_SEEDED', source: 'Eliminación Simple', type: 'DIRECT_SIMPLE_SEEDED', bracket_seed_id: uid('S') }; });
+
+  const openPositions = slots.map((value, index) => value ? null : index + 1).filter(Boolean);
+  const randomized = shuffle(withoutSeed, `${championship.random_seed || championship.championship_id || 'SIMPLE'}-${seedSuffix || Date.now()}`);
+  randomized.forEach((player, index) => {
+    const position = openPositions[index];
+    if (!position) return;
+    slots[position - 1] = { player, seed_position: position, qualification_type: 'DIRECT_SIMPLE_RANDOM', source: 'Eliminación Simple', type: 'DIRECT_SIMPLE_RANDOM', bracket_seed_id: uid('S') };
+  });
+
+  return { seeds: slots.filter(Boolean), warnings, total };
+}
+
 export function calculateTotalQualifiers(championship, totalGroups) {
   return totalGroups * num(championship.qualifiers_per_group) + num(championship.extra_qualifiers_count);
 }

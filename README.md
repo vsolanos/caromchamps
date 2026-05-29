@@ -1,4 +1,39 @@
-# CaromChamps v6.7.2
+# CaromChamps v6.9.4
+
+## v6.9.4 - Hotfix de legibilidad en Partidas modo oscuro
+
+- Se refuerza el color **azul oscuro** `#0F2A5F` en los campos críticos del tab **Partidas** cuando la plataforma está en modo oscuro.
+- El ajuste aplica directamente a **Carambolas**, **Entradas**, **SM1**, **SM2**, **Tipo de resultado** y **Ganador manual**.
+- Se mantiene el fondo gris claro `#E5E7EB` para asegurar contraste y lectura clara.
+- Se agrega estilo directo en `Capture.js` y reglas CSS de respaldo de alta especificidad para evitar que reglas globales vuelvan a pintar los textos en celeste.
+
+
+
+## v6.8.0
+
+Ajustes funcionales y visuales para incorporar el nuevo tipo de campeonato **Eliminación Simple** y refinar la captura en modo oscuro:
+
+- Modo oscuro / Tab Partidas: los campos de carambolas, SM1, SM2, tipo de resultado y ganador manual se muestran con texto negro y fondo claro para mejorar legibilidad operativa.
+- Nuevo tipo de campeonato **Eliminación Simple** disponible en Wizard ProV y en el tab Campeonato.
+- Eliminación Simple no utiliza fase de grupos; por lo tanto, el tab **Grupos** se oculta automáticamente en ProV, IA y Clásica cuando el campeonato activo usa este tipo.
+- En Eliminación Simple todos los jugadores seleccionados se consideran clasificados directamente a llaves.
+- Llaves / Bracket: para Eliminación Simple se puede generar una estructura aleatoria inicial usando la lógica actual de bracket, números mágicos y R0 cuando aplique.
+- Llaves / Bracket: se agrega botón **Regenerar estructura** para campeonatos de Eliminación Simple. Si ya existen partidas realizadas, el sistema muestra advertencia antes de reemplazar la llave.
+- Si un jugador tiene número de cabeza de serie definido en el campeonato, se respeta su posición de siembra; los jugadores sin cabeza se asignan aleatoriamente.
+- Campeonatos tipo **Doble Fase Grupos** muestran automáticamente el tab **Grupos F2** desde el inicio, aunque todavía no se hayan generado los grupos de segunda fase.
+- Setup muestra una tarjeta informativa específica para Eliminación Simple explicando que no usa grupos y que los jugadores pasan directo a llaves.
+- `package.json` actualizado a `6.8.0`.
+
+Archivos impactados:
+
+- `src/App.js`
+- `src/modules/Setup.js`
+- `src/modules/Bracket.js`
+- `src/lib/tournament.js`
+- `src/styles.css`
+- `package.json`
+- `README.md`
+- `CHANGELOG.md`
 
 ## v6.7.2
 
@@ -61,7 +96,7 @@ Esta versión incorpora ajustes de UX/UI y operación solicitados para mejorar l
 
 ## Versión activa
 
-**CaromChamps v6.7.2** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
+**CaromChamps v6.9.4** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
 
 ### Cambios principales v6.6.0
 
@@ -110,6 +145,25 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\START_CAROMCHAMPS.ps1
 ```
 
 ## Historial de versiones consolidadas
+
+
+
+### v6.9.3 — Feedback operativo y refinamientos de Eliminación Simple
+
+- Modo oscuro / Tab Partidas: carambolas, SM1, SM2, tipo de resultado y ganador manual se muestran en azul oscuro.
+- Nuevo menú **Feedback** en el panel izquierdo para seguimiento de comentarios, mejoras y bugs.
+- Los feedbacks pueden cambiarse manualmente entre Recibido, En revisión, Priorizado, En desarrollo, Resuelto, Cerrado y Rechazado.
+- El tab Campeonato oculta campos de grupos/F2 que no aplican cuando el tipo es **Eliminación Simple**.
+- En Eliminación Simple se muestran cards propios de jugadores a llaves y tipo de llave aleatoria con respeto de cabezas de serie.
+
+### v6.8.0 — Eliminación Simple y ajustes de captura
+
+- Nuevo tipo de campeonato Eliminación Simple, sin fase de grupos.
+- Ocultamiento automático del tab Grupos para campeonatos de Eliminación Simple.
+- Generación y regeneración aleatoria de llaves con respeto de cabezas de serie.
+- Advertencia cuando se intenta regenerar una estructura con partidas ya realizadas.
+- Grupos F2 visible automáticamente para campeonatos de Doble Fase Grupos.
+- Modo oscuro en Partidas con campos críticos en texto negro para legibilidad.
 
 ### v6.6.0 — UI consistente en llaves, PDF Face to Face y planillas base
 
@@ -297,3 +351,16 @@ git push origin main
 git tag -a v6.6.0 -m "CaromChamps v6.6.0"
 git push origin v6.6.0
 ```
+
+## v6.9.3 - Ajuste visual modo oscuro / Partidas
+
+- Los fondos de los campos Carambolas, SM1, SM2, Tipo de resultado y Ganador manual en modo oscuro se ajustan a gris claro.
+- Se mantiene el texto café claro solicitado en v6.9.1 para asegurar contraste y continuidad visual.
+
+
+
+### v6.9.3 - Hotfix de legibilidad en Partidas / modo oscuro
+
+- Corrección reforzada para que los campos Carambolas, SM1, SM2, Tipo de resultado y Ganador manual muestren texto oscuro real en modo oscuro.
+- Se aplican clases específicas e inline-style desde `Capture.js`, evitando que reglas globales de `.input`, `.completed-row-card` o estilos anteriores vuelvan a pintar los valores en celeste.
+- `Select` acepta ahora `className`, `style` y props adicionales.

@@ -7,7 +7,7 @@ const DIVISIONS = ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL'
 const GROUP_MODES = ['FULL_RANDOM', 'SEEDED_RANDOM', 'SEEDED_RANDOM_COUNTRY_SPREAD', 'SNAKE_DRAFT'];
 const CLOSURE_TYPES = ['CON_CIERRE', 'SIN_CIERRE'];
 const THIRD_PLACE = ['POINTS_THEN_AVG', 'AVG_THEN_POINTS'];
-const CHAMPIONSHIP_TYPES = ['NORMAL', 'DOBLE_FASE_GRUPOS', 'RANKING'];
+const CHAMPIONSHIP_TYPES = ['NORMAL', 'DOBLE_FASE_GRUPOS', 'ELIMINACION_SIMPLE', 'RANKING'];
 
 function StatBlock({ label, value }) {
   return E('div', { className: 'round-card' }, E('div', { className: 'stat-label' }, label), E('div', { className: 'stat-value' }, value));
@@ -23,7 +23,9 @@ export function SetupModule({ championship, setChampionship, players, championsh
   const participantSeeds = championship.participant_seeds || {};
   const isInternational = isInternationalChampionship(championship);
   const isSelective = championship.division_filter === 'SELECTIVO';
-  const isRanking = (championship.championship_type || 'NORMAL') === 'RANKING';
+  const championshipType = championship.championship_type || 'NORMAL';
+  const isRanking = championshipType === 'RANKING';
+  const isSimpleElimination = championshipType === 'ELIMINACION_SIMPLE';
   const protectedStatuses = ['GROUPS_CLOSED', 'GROUPS_F2_READY', 'GROUPS_F2_CLOSED', 'CLOSED', 'FINALIZED', 'COMPLETED'];
   const setupLocked = protectedStatuses.includes(championship.status);
   const participantsLocked = setupLocked;
@@ -48,7 +50,7 @@ export function SetupModule({ championship, setChampionship, players, championsh
   const total = calculateTotalQualifiers(championship, groupCount);
   const errors = isRanking
     ? []
-    : validateChampionship({ ...championship, total_qualifiers_f2: total, participant_ids: participantIds }, enrolled);
+    : (isSimpleElimination ? (enrolled.length < 4 ? ['Eliminación Simple requiere al menos 4 jugadores para generar llaves.'] : []) : validateChampionship({ ...championship, total_qualifiers_f2: total, participant_ids: participantIds }, enrolled));
   const rankingRules = Array.isArray(championship.ranking_points_rules) ? championship.ranking_points_rules : [];
   const rankingChampionshipOptions = championships
     .filter((row) => row.id !== activeId)
@@ -149,10 +151,10 @@ export function SetupModule({ championship, setChampionship, players, championsh
         E(Field, { label: 'Fecha inicio' }, E(Input, { type: 'date', value: championship.start_date || '', onChange: (e) => patch('start_date', e.target.value) })),
         E(Field, { label: 'Fecha fin' }, E(Input, { type: 'date', value: championship.end_date || '', onChange: (e) => patch('end_date', e.target.value) })),
         E(Field, { label: 'División objetivo' }, E(Select, { value: championship.division_filter, onChange: (e) => patch('division_filter', e.target.value) }, DIVISIONS.map((x) => E('option', { key: x }, x)))),
-        E(Field, { label: 'Tipo de campeonato' }, E(Select, { disabled: setupLocked, value: championship.championship_type || 'NORMAL', onChange: (e) => patch('championship_type', e.target.value) }, CHAMPIONSHIP_TYPES.map((x) => E('option', { key: x, value: x }, x === 'RANKING' ? 'Ranking' : x === 'DOBLE_FASE_GRUPOS' ? 'Doble Fase Grupos' : 'Normal')))),
+        E(Field, { label: 'Tipo de campeonato' }, E(Select, { disabled: setupLocked, value: championship.championship_type || 'NORMAL', onChange: (e) => patch('championship_type', e.target.value) }, CHAMPIONSHIP_TYPES.map((x) => E('option', { key: x, value: x }, x === 'RANKING' ? 'Ranking' : x === 'DOBLE_FASE_GRUPOS' ? 'Doble Fase Grupos' : x === 'ELIMINACION_SIMPLE' ? 'Eliminación Simple' : 'Normal')))),
         E(Field, { label: 'Control de promedios' }, E(Select, { disabled: setupLocked, value: championship.average_control_enabled === false ? 'NO' : 'SI', onChange: (e) => patch('average_control_enabled', e.target.value === 'SI') }, ['SI', 'NO'].map((x) => E('option', { key: x, value: x }, x)))),
         isRanking ? E(Field, { label: 'Cantidad de campeonatos para ranking' }, E(Input, { type: 'number', min: 1, value: championship.ranking_max_championships || 1, onChange: (e) => patch('ranking_max_championships', num(e.target.value, 1)) })) : null,
-        ['NORMAL', 'DOBLE_FASE_GRUPOS'].includes(championship.championship_type || 'NORMAL') ? E(Field, { label: 'Campeonato Ranking', hint: 'Solo se muestran rankings activos dentro del rango de fechas.' }, E(Select, { value: championship.ranking_championship_id || '', onChange: (e) => patch('ranking_championship_id', e.target.value) }, E('option', { value: '' }, 'No asociado'), rankingChampionshipOptions.map((row) => E('option', { key: row.id, value: row.championship.championship_id }, row.name)))) : null,
+        ['NORMAL', 'DOBLE_FASE_GRUPOS', 'ELIMINACION_SIMPLE'].includes(championship.championship_type || 'NORMAL') ? E(Field, { label: 'Campeonato Ranking', hint: 'Solo se muestran rankings activos dentro del rango de fechas.' }, E(Select, { value: championship.ranking_championship_id || '', onChange: (e) => patch('ranking_championship_id', e.target.value) }, E('option', { value: '' }, 'No asociado'), rankingChampionshipOptions.map((row) => E('option', { key: row.id, value: row.championship.championship_id }, row.name)))) : null,
         E(Field, { label: 'Website opcional' }, E(Input, { value: championship.website_url || '', onChange: (e) => patch('website_url', e.target.value), placeholder: 'https://...' })),
         E(Field, { label: 'Grupo WhatsApp opcional' }, E(Input, { value: championship.whatsapp_group || '', onChange: (e) => patch('whatsapp_group', e.target.value), placeholder: 'URL o nombre de grupo' }))
       )
@@ -170,33 +172,42 @@ export function SetupModule({ championship, setChampionship, players, championsh
         )))
       ))
     ) : null,
+    isSimpleElimination ? E(Card, { className: 'setup-simple-elimination-info' },
+      E(SectionTitle, { title: 'Eliminación Simple · comportamiento operativo', subtitle: 'Este tipo de campeonato no utiliza fase de grupos.' }),
+      E('div', { className: 'grid grid-3', style: { marginTop: 12 } },
+        E(StatBlock, { label: 'Jugadores a llaves', value: enrolled.length }),
+        E(StatBlock, { label: 'Tabs ocultos', value: 'Grupos' }),
+        E(StatBlock, { label: 'Siembra', value: 'CBZ + aleatorio' })
+      ),
+      E('p', { className: 'small', style: { marginTop: 12 } }, 'Todos los jugadores seleccionados se consideran clasificados directamente a llaves. Los números de cabeza de serie se respetan en la posición de llave; los jugadores sin número se ubican aleatoriamente cada vez que se genere o regenere la estructura.')
+    ) : null,
     E(Card, { className: 'setup-normal-only' },
-      E(SectionTitle, { title: 'Campeonato · Paso 3: Reglas y parámetros operativos', subtitle: 'Para campeonatos abiertos use INTERNACIONAL. Para selectivos use SELECTIVO: solo primera división y sin ascenso/descenso.' }),
+      E(SectionTitle, { title: 'Campeonato · Paso 3: Reglas y parámetros operativos', subtitle: isSimpleElimination ? 'En Eliminación Simple se ocultan parámetros de grupos; todos los jugadores seleccionados pasan directo a llaves.' : 'Para campeonatos abiertos use INTERNACIONAL. Para selectivos use SELECTIVO: solo primera división y sin ascenso/descenso.' }),
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
         E(Field, { label: 'Modalidad' }, E(Select, { value: championship.play_mode, onChange: (e) => patch('play_mode', e.target.value) }, ['RACE', 'SETS'].map((x) => E('option', { key: x }, x)))),
-        E(Field, { label: 'Tamaño grupo' }, E(Select, { value: championship.preferred_group_size, onChange: (e) => patch('preferred_group_size', num(e.target.value)) }, [3, 4, 5, 6, 7, 8, 9, 10].map((x) => E('option', { key: x }, x)))),
-        E(Field, { label: 'Modo generación grupos' }, E(Select, { value: championship.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, GROUP_MODES.map((x) => E('option', { key: x }, x)))),
-        E(Field, { label: 'Clasificados directos/grupo' }, E(Input, { type: 'number', value: championship.qualifiers_per_group, onChange: (e) => patch('qualifiers_per_group', num(e.target.value)) })),
-        E(Field, { label: 'Posición adicional' }, E(Input, { type: 'number', value: championship.extra_qualifier_position, onChange: (e) => patch('extra_qualifier_position', num(e.target.value)) })),
-        E(Field, { label: 'Mejores adicionales' }, E(Input, { type: 'number', value: championship.extra_qualifiers_count, onChange: (e) => patch('extra_qualifiers_count', num(e.target.value)) })),
-        E(Field, { label: 'Total F2 calculado' }, E(Input, { type: 'number', disabled: true, value: total })),
+        !isSimpleElimination ? E(Field, { label: 'Tamaño grupo' }, E(Select, { value: championship.preferred_group_size, onChange: (e) => patch('preferred_group_size', num(e.target.value)) }, [3, 4, 5, 6, 7, 8, 9, 10].map((x) => E('option', { key: x }, x)))) : null,
+        !isSimpleElimination ? E(Field, { label: 'Modo generación grupos' }, E(Select, { value: championship.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, GROUP_MODES.map((x) => E('option', { key: x }, x)))) : null,
+        !isSimpleElimination ? E(Field, { label: 'Clasificados directos/grupo' }, E(Input, { type: 'number', value: championship.qualifiers_per_group, onChange: (e) => patch('qualifiers_per_group', num(e.target.value)) })) : null,
+        !isSimpleElimination ? E(Field, { label: 'Posición adicional' }, E(Input, { type: 'number', value: championship.extra_qualifier_position, onChange: (e) => patch('extra_qualifier_position', num(e.target.value)) })) : null,
+        !isSimpleElimination ? E(Field, { label: 'Mejores adicionales' }, E(Input, { type: 'number', value: championship.extra_qualifiers_count, onChange: (e) => patch('extra_qualifiers_count', num(e.target.value)) })) : null,
+        !isSimpleElimination ? E(Field, { label: 'Total F2 calculado' }, E(Input, { type: 'number', disabled: true, value: total })) : null,
         E(Field, { label: 'Carambolas objetivo default' }, E(Input, { type: 'number', value: championship.target_points, onChange: (e) => patch('target_points', num(e.target.value)) })),
         E(Field, { label: 'Límite entradas default' }, E(Input, { type: 'number', value: championship.innings_limit, onChange: (e) => patch('innings_limit', num(e.target.value)) })),
         E(Field, { label: 'Tipo cierre default' }, E(Select, { value: championship.closure_type, onChange: (e) => patch('closure_type', e.target.value) }, CLOSURE_TYPES.map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Descanso mínimo default' }, E(Input, { type: 'number', value: championship.minimum_rest_time_minutes, onChange: (e) => patch('minimum_rest_time_minutes', num(e.target.value)) })),
-        E(Field, { label: 'Política tercer lugar' }, E(Select, { value: championship.third_place_policy, onChange: (e) => patch('third_place_policy', e.target.value) }, THIRD_PLACE.map((x) => E('option', { key: x }, x)))),
+        !isSimpleElimination ? E(Field, { label: 'Política tercer lugar' }, E(Select, { value: championship.third_place_policy, onChange: (e) => patch('third_place_policy', e.target.value) }, THIRD_PLACE.map((x) => E('option', { key: x }, x)))) : null,
         E(Field, { label: 'Mín. partidas AVG cierre' }, E(Input, { type: 'number', value: championship.minimum_matches_for_avg_close, onChange: (e) => patch('minimum_matches_for_avg_close', num(e.target.value)) })),
-        E(Field, { label: 'Bloques de partidas por grupo / distribución de mesas', hint: 'Ejemplos: 0 = grupo completo en una mesa; 2 = bloques de 2 en una mesa; 2D2 = bloques de 2 distribuidos en 2 mesas.' }, E(Input, { value: championship.table_assign_block ?? '2', onChange: (e) => patch('table_assign_block', e.target.value.toUpperCase()) })),
-        E(Field, { label: 'Seed sorteo' }, E(Input, { value: championship.random_seed, onChange: (e) => patch('random_seed', e.target.value) }))
+        !isSimpleElimination ? E(Field, { label: 'Bloques de partidas por grupo / distribución de mesas', hint: 'Ejemplos: 0 = grupo completo en una mesa; 2 = bloques de 2 en una mesa; 2D2 = bloques de 2 distribuidos en 2 mesas.' }, E(Input, { value: championship.table_assign_block ?? '2', onChange: (e) => patch('table_assign_block', e.target.value.toUpperCase()) })) : null,
+        E(Field, { label: isSimpleElimination ? 'Seed sorteo de llaves' : 'Seed sorteo' }, E(Input, { value: championship.random_seed, onChange: (e) => patch('random_seed', e.target.value) }))
       ),
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
         E(StatBlock, { label: 'Jugadores seleccionados', value: enrolled.length }),
-        E(StatBlock, { label: 'Grupos estimados', value: groupCount }),
-        E(StatBlock, { label: 'Clasificados F2', value: total }),
+        isSimpleElimination ? E(StatBlock, { label: 'Jugadores a llaves', value: enrolled.length }) : E(StatBlock, { label: 'Grupos estimados', value: groupCount }),
+        isSimpleElimination ? E(StatBlock, { label: 'Tipo de llave', value: 'Aleatoria + CBZ' }) : E(StatBlock, { label: 'Clasificados F2', value: total }),
         E(StatBlock, { label: 'Mesas activas', value: championship.tables.filter((t) => t.is_active).length })
       ),
-      E('p', { className: 'small', style: { marginTop: 10 } }, `Bloque mesa normalizado: ${parseTableGroupBlock(championship.table_assign_block, championship.tables.filter((t) => t.is_active).length || 1).normalized}`),
-      errors.length ? E('ul', { className: 'small validation-card', style: { padding: 14, marginTop: 14 } }, errors.map((err) => E('li', { key: err }, err))) : E('p', { className: 'small', style: { color: '#047857', marginTop: 14 } }, 'Configuración válida para generar grupos.')
+      !isSimpleElimination ? E('p', { className: 'small', style: { marginTop: 10 } }, `Bloque mesa normalizado: ${parseTableGroupBlock(championship.table_assign_block, championship.tables.filter((t) => t.is_active).length || 1).normalized}`) : E('p', { className: 'small', style: { marginTop: 10 } }, 'Eliminación Simple omite configuración de grupos, clasificados F2, mejores adicionales y política de tercer lugar. La llave se administra desde el tab Llaves.'),
+      errors.length ? E('ul', { className: 'small validation-card', style: { padding: 14, marginTop: 14 } }, errors.map((err) => E('li', { key: err }, err))) : E('p', { className: 'small', style: { color: '#047857', marginTop: 14 } }, isSimpleElimination ? 'Configuración válida para generar llaves de Eliminación Simple.' : 'Configuración válida para generar grupos.')
     ),
     E(Card, { className: 'setup-normal-only' },
       phaseRulesLocked ? E('div', { className: 'validation-card small' }, 'Reglas bloqueadas: ya se clasificaron grupos o el campeonato está cerrado.') : null,
