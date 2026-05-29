@@ -132,7 +132,7 @@ export function validateChampionship(championship, players) {
   const totalQualifiers = num(championship.total_qualifiers_f2);
   if (!championship.name?.trim()) errors.push('Nombre del campeonato obligatorio.');
   if (!championship.venue_name?.trim()) errors.push('Sede o recinto obligatorio.');
-  if (![3, 4, 5, 6].includes(size)) errors.push('Tamaño de grupo inválido. Debe estar entre 3 y 6.');
+  if (size < 3) errors.push('Tamaño de grupo inválido. Debe ser mayor o igual a 3.');
   if (players.length < 2) errors.push('Debe seleccionar al menos 2 jugadores participantes.');
   if (num(championship.qualifiers_per_group) < 1) errors.push('Debe clasificar al menos un jugador por grupo.');
   if (num(championship.qualifiers_per_group) > size) errors.push('Clasificados por grupo no puede superar el tamaño de grupo.');
@@ -274,8 +274,8 @@ export function assignMatchNumbers(matches, startNumber = 1) {
 export function roundRobinPattern(size) {
   const patterns = {
     3: [
-      [[1, 3]],
       [[2, 3]],
+      [[1, 3]],
       [[1, 2]]
     ],
     4: [
@@ -284,21 +284,45 @@ export function roundRobinPattern(size) {
       [[1, 2], [3, 4]]
     ],
     5: [
-      [[1, 5], [2, 4]],
+      [[2, 5], [3, 4]],
+      [[1, 5], [2, 3]],
       [[1, 4], [5, 3]],
-      [[1, 3], [4, 2]],
-      [[1, 2], [3, 5]],
-      [[2, 5], [3, 4]]
+      [[1, 3], [2, 4]],
+      [[1, 2], [4, 5]]
     ],
     6: [
       [[1, 6], [2, 5], [3, 4]],
-      [[1, 5], [6, 4], [2, 3]],
-      [[1, 4], [5, 3], [6, 2]],
-      [[1, 3], [4, 2], [5, 6]],
+      [[1, 5], [4, 6], [2, 3]],
+      [[1, 4], [3, 5], [2, 6]],
+      [[1, 3], [2, 4], [5, 6]],
       [[1, 2], [3, 6], [4, 5]]
     ]
   };
-  return patterns[size] || [];
+  if (patterns[size]) return patterns[size];
+  if (size < 2) return [];
+
+  // Generic circle-method fallback for groups of 7 or more.
+  // Keeps player 1 as the fixed reference, uses BYE for odd sizes and preserves
+  // the same opposite-extremes pattern used by the official 4/6-player orders.
+  const hasBye = size % 2 === 1;
+  const bye = 0;
+  const rotation = Array.from({ length: hasBye ? size + 1 : size }, (_, index) => index === 0 ? 1 : index + 1);
+  if (hasBye) rotation[rotation.length - 1] = bye;
+  const rounds = [];
+  const totalRounds = rotation.length - 1;
+  const half = rotation.length / 2;
+  let current = [...rotation];
+  for (let round = 0; round < totalRounds; round += 1) {
+    const pairs = [];
+    for (let i = 0; i < half; i += 1) {
+      const a = current[i];
+      const b = current[current.length - 1 - i];
+      if (a !== bye && b !== bye) pairs.push([a, b]);
+    }
+    rounds.push(pairs);
+    current = [current[0], current[current.length - 1], ...current.slice(1, current.length - 1)];
+  }
+  return rounds;
 }
 
 export function generateRoundRobinMatches(championship, groups, startNumber = 1) {

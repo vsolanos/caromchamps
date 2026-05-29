@@ -1,6 +1,6 @@
 {
   "name": "caromchamps",
-  "version": "6.6.0",
+  "version": "6.7.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,12 +15,12 @@
     "start:preview": "vite preview --host 127.0.0.1 --port 4173"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
-    "@vitejs/plugin-react": "6.0.0",
-    "jsqr": "^1.4.0",
-    "qrcode.react": "^4.2.0",
+    "@vitejs/plugin-react": "4.7.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "vite": "^8.0.14"
+    "vite": "5.4.21",
+    "qrcode.react": "^4.2.0",
+    "jsqr": "^1.4.0",
+    "@supabase/supabase-js": "^2.86.0"
   }
 }

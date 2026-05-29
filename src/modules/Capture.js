@@ -237,17 +237,17 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     const s2Value = isP1 ? (match.s2_p1 || '') : (match.s2_p2 || '');
     const activeDataClass = (value) => String(value ?? '').trim() !== '' ? 'match-active-data-cell has-result-data' : 'match-active-data-cell';
     const cells = [
-      E('td', { className: 'player-name', key: 'player' }, playerMap[playerId] ? E(PlayerHistoryTrigger, { player: playerMap[playerId] }) : (isPlanned ? 'Por definir' : '')), 
-      E('td', { key: 'caroms', className: activeDataClass(caromsValue) }, E(Input, { type: 'number', disabled: isPlanned, value: caromsValue, onChange: (e) => patchKey(isP1 ? 'caroms_p1' : 'caroms_p2', e.target.value) })),
-      avgEnabled ? E('td', { key: 'innings', className: activeDataClass(inningsValue) }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })) : null,
-      E('td', { key: 's1', className: activeDataClass(s1Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
-      E('td', { key: 's2', className: activeDataClass(s2Value) }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
+      E('td', { className: 'player-name capture-player-name-cell', key: 'player' }, playerMap[playerId] ? E(PlayerHistoryTrigger, { player: playerMap[playerId] }) : (isPlanned ? 'Por definir' : '')),
+      E('td', { key: 'caroms', className: `${activeDataClass(caromsValue)} capture-caroms-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: caromsValue, onChange: (e) => patchKey(isP1 ? 'caroms_p1' : 'caroms_p2', e.target.value) })),
+      avgEnabled ? E('td', { key: 'innings', className: `${activeDataClass(inningsValue)} capture-innings-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: inningsValue, onChange: (e) => patchKey(isP1 ? 'innings_p1' : 'innings_p2', e.target.value) })) : null,
+      E('td', { key: 's1', className: `${activeDataClass(s1Value)} capture-s1-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s1Value, onChange: (e) => patchKey(isP1 ? 's1_p1' : 's1_p2', e.target.value) })),
+      E('td', { key: 's2', className: `${activeDataClass(s2Value)} capture-s2-cell` }, E(Input, { type: 'number', disabled: isPlanned, value: s2Value, onChange: (e) => patchKey(isP1 ? 's2_p1' : 's2_p2', e.target.value) }))
     ];
     if (!['GROUPS', 'GROUPS_F2'].includes(match.phase)) {
       const penaltiesValue = isP1 ? match.penalties_p1 : match.penalties_p2;
       cells.push(E('td', { key: 'penalties', className: activeDataClass(penaltiesValue) }, E(Input, { type: 'number', disabled: isPlanned, value: penaltiesValue, onChange: (e) => patchKey(isP1 ? 'penalties_p1' : 'penalties_p2', e.target.value) })));
     }
-    if (avgEnabled) cells.push(E('td', { key: 'avg', className: String(stats.avg || '').trim() !== 'N/A' ? 'match-active-data-cell has-result-data' : 'match-active-data-cell' }, stats.avg));
+    if (avgEnabled) cells.push(E('td', { key: 'avg', className: String(stats.avg || '').trim() !== 'N/A' ? 'match-active-data-cell has-result-data capture-avg-cell' : 'match-active-data-cell capture-avg-cell' }, stats.avg));
     return E('tr', { key: `${match.match_id}-${playerNumber}`, className: stats.is_winner ? 'winner-row' : '' }, ...cells);
   };
 
@@ -431,10 +431,10 @@ export function CaptureModule({ championship, players, matches, setMatches, audi
     filtered.length === 0 ? E(EmptyState, { title: 'Sin partidas', message: 'Genere grupos, bracket o cambie los filtros.' }) : E('div', { className: 'grid' },
       filtered.map((match) => E(Card, { key: match.match_id, className: match.match_status === 'COMPLETED' ? 'completed-row-card' : '' },
         E('div', { className: 'toolbar', style: { justifyContent: 'space-between' } },
-          E('div', null,
-            E('label', { className: 'small' }, E('input', { type: 'checkbox', checked: selectedIds.includes(match.match_id), onChange: () => toggleSelected(match.match_id) }), ' seleccionar'),
-            E('h3', { style: { margin: 0 } }, `${matchCode(match)} · ${match.group_name || matchRoundLabel(match)}`),
-            E('p', { className: 'small', style: { margin: '4px 0 0' } }, `${match.scheduled_date ? formatDateEs(match.scheduled_date) : 'Sin fecha'} ${match.scheduled_time || ''} · ${match.assigned_table || 'Sin mesa'} · ${matchDetailedScore(match, championship)}`)
+          E('div', { className: 'capture-match-title-block' },
+            E('label', { className: 'small capture-select-line' }, E('input', { type: 'checkbox', checked: selectedIds.includes(match.match_id), onChange: () => toggleSelected(match.match_id) }), ' seleccionar'),
+            E('h3', { className: 'capture-match-heading' }, `${matchCode(match)} · ${match.group_name || matchRoundLabel(match)}`),
+            E('p', { className: 'small capture-match-subtitle' }, `${match.scheduled_date ? formatDateEs(match.scheduled_date) : 'Sin fecha'} ${match.scheduled_time || ''} · ${match.assigned_table || 'Sin mesa'} · ${matchDetailedScore(match, championship)}`)
           ),
           E(Badge, { kind: match.match_status === 'COMPLETED' ? 'success' : match.validation_error ? 'danger' : 'neutral' }, matchDisplayStatus(match))
         ),

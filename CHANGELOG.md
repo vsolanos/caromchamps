@@ -1,3 +1,46 @@
+
+## v6.7.2
+
+- Reporte PDF de Grupos: corregida la visibilidad de nombres en filas clasificadas de la tabla de posiciones.
+- Reporte PDF de Grupos: toda la línea del jugador ganador en la agenda se muestra en azul.
+- Grupos: títulos de sección centrados y uniformes para Grupo, Tabla de posiciones y Agenda del grupo.
+- Grupos/PDF: se agrega respaldo de texto plano para nombres de jugadores durante impresión.
+
+
+## v6.7.1
+
+- Corrección crítica de carga de aplicación: se agregó la importación faltante de `Field` e `Input` en `src/modules/Groups.js`.
+- Soluciona el error de runtime `Field is not defined` generado al desplegar la sección de Grupos con los nuevos filtros agregados en v6.7.0.
+- Se mantiene sin cambios funcionales adicionales respecto a v6.7.0.
+
+# Changelog
+
+## v6.7.0
+
+### Ajustes de UX/UI
+- Modo claro: el campeonato activo en la lista de campeonatos se resalta con textos en azul para mejorar identificación visual.
+- Tab Partidas: se agregaron estilos diferenciados por modo claro/oscuro para nombres de jugadores, carambolas, SM1, SM2 y promedio según la regla solicitada.
+- Tab Partidas: el código de partida y grupo/ronda ahora se muestra centrado y con tamaño 50% mayor.
+- Grupos: el nombre de cada grupo queda centrado y con tamaño 50% mayor.
+
+### Ajustes funcionales
+- Grupos: la agenda del grupo ahora muestra cada partida en dos líneas, una por jugador, incluyendo CAR, ENTR, SM1, SM2, PROM y puntos ganados cuando aplica.
+- Grupos: se agregó panel de filtros por grupo y por jugador; al buscar un jugador se muestra el grupo completo donde participó.
+- Plataforma: se agregó botón flotante de Feedback para registrar mejoras o bugs con interface, menú, tab y sección editable; el registro queda en Auditoría.
+- Generación de partidas: se actualizó el orden oficial de enfrentamientos para grupos de 3, 4, 5 y 6 jugadores y se agregó fallback genérico para grupos de 7 o más jugadores.
+- Setup/Wizard: se amplió el soporte operativo para tamaños de grupo mayores a 6 mediante opciones adicionales y validación de mínimo 3 jugadores por grupo.
+
+### Archivos actualizados
+- `src/App.js`
+- `src/modules/Capture.js`
+- `src/modules/Groups.js`
+- `src/modules/Championships.js`
+- `src/modules/Setup.js`
+- `src/lib/tournament.js`
+- `src/styles.css`
+- `package.json`
+- `README.md`
+
 ## v6.6.0
 
 - Llaves Face to Face: cards estandarizados con el mismo diseño visual de la vista Continua.

@@ -1,0 +1,81 @@
+### Comandos para crear un proyecto Pages desde CMD
+
+**Paso 1:** Construir la app
+```cmd
+npm run build
+```
+
+**Paso 2:** Crear el proyecto Pages
+```cmd
+npx wrangler pages project create caromchampsapp --production-branch main
+```
+
+**Paso 3:** Subir los archivos al proyecto
+```cmd
+npx wrangler pages deploy dist --project-name=caromchampsapp
+```
+
+**Paso 4 (si necesitas redeploy después de cambios):** Repite los pasos 1 y 3:
+```cmd
+npm run build
+npx wrangler pages deploy dist --project-name=caromchampsapp
+
+Cuando ejecutaste el primer comando de Wrangler, apareció esto en tu consola:
+
+```
+Attempting to login via OAuth...
+Opening a link in your default browser: https://dash.cloudflare.com/oauth2/auth?...
+Successfully logged in.
+```
+
+### Así funciona la conexión:
+
+1. **Wrangler abrió tu navegador** y te redirigió a la página de login de Cloudflare
+2. **Iniciaste sesión** con tu cuenta (Vsolanos@gmail.com)
+3. **Autorizaste** a Wrangler para acceder a tu cuenta de Cloudflare
+4. Cloudflare generó un **token OAuth** y lo envió de vuelta a Wrangler
+5. **Wrangler guardó el token** en tu computadora
+
+A partir de ese momento, todos los comandos de Wrangler (`pages project create`, `pages deploy`) usan ese token para autenticarse con la API de Cloudflare en tu nombre.
+
+### ¿Dónde se guarda el token?
+
+En tu computadora, en la carpeta de configuración de Wrangler:
+
+- **Windows:** `%USERPROFILE%\.wrangler\`
+
+Si alguna vez necesitas cerrar sesión o cambiar de cuenta, ejecuta:
+
+```cmd
+npx wrangler logout
+```
+
+Y para volver a conectarte:
+
+```cmd
+npx wrangler login
+```
+```
+
+### Comandos para crear un proyecto Pages desde CMD
+
+**Paso 1:** Construir la app
+```cmd
+npm run build
+```
+
+**Paso 2:** Crear el proyecto Pages
+```cmd
+npx wrangler pages project create caromchampsapp --production-branch main
+```
+
+**Paso 3:** Subir los archivos al proyecto
+```cmd
+npx wrangler pages deploy dist --project-name=caromchampsapp
+```
+
+**Paso 4 (si necesitas redeploy después de cambios):** Repite los pasos 1 y 3:
+```cmd
+npm run build
+npx wrangler pages deploy dist --project-name=caromchampsapp
+```

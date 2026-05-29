@@ -1,10 +1,67 @@
-# CaromChamps v6.6.0
+# CaromChamps v6.7.2
+
+## v6.7.2
+
+Ajuste específico del reporte PDF de Grupos y de la consistencia visual de títulos internos:
+
+- Reporte PDF de Grupos: corregida la visibilidad del nombre de jugadores clasificados en la tabla de posiciones.
+- Reporte PDF de Grupos: las filas de jugadores ganadores en la agenda muestran todo el texto en color azul.
+- Reporte PDF/UI de Grupos: títulos de sección como Grupo, Tabla de posiciones y Agenda del grupo quedan centrados de forma consistente.
+- Se agrega texto plano de respaldo para nombres de jugadores en impresión, evitando problemas de renderizado con botones/enlaces de historial dentro del PDF.
+- `package.json` actualizado a `6.7.2`.
+
+Archivos impactados:
+
+- `src/modules/Groups.js`
+- `src/styles.css`
+- `package.json`
+- `README.md`
+- `CHANGELOG.md`
+
+
+## v6.7.1
+
+Corrección crítica de estabilidad posterior a v6.7.0. Esta versión soluciona el error `Field is not defined` que impedía cargar la aplicación cuando se renderizaba el módulo de Grupos con la nueva sección de filtros. La causa fue una importación incompleta en `src/modules/Groups.js` después de agregar los campos de filtro por grupo y jugador.
+
+Archivos impactados:
+
+- `src/modules/Groups.js`
+- `package.json`
+- `README.md`
+- `CHANGELOG.md`
+
+
 
 Plataforma web para gestión integral de campeonatos de billar carambola a 3 bandas FECOBI / ASOBIGRIE: jugadores, campeonatos normales, campeonatos ranking, doble fase de grupos, calendario, captura de partidas, planillas físicas, llaves/brackets, reportes PDF/Excel, ranking, cierre y auditoría.
 
+## Release v6.7.0
+
+Esta versión incorpora ajustes de UX/UI y operación solicitados para mejorar la claridad de navegación y la captura en vivo:
+
+- Campeonato activo en modo claro con texto azul en listas de campeonatos.
+- Tab Partidas con colores diferenciados para nombres, ganador, carambolas, SM1, SM2 y promedio según modo claro/oscuro.
+- Código de partida y grupo/ronda centrado y aumentado 50%.
+- Sección Grupos con título de grupo centrado y aumentado 50%.
+- Agenda de grupo convertida a registro por jugador: cada partida se muestra en dos líneas e incluye SM1, SM2 y puntos ganados.
+- Filtros en Grupos por grupo y por jugador; la búsqueda por jugador muestra el grupo completo correspondiente.
+- Botón flotante de Feedback para comentarios de mejora o bugs, con ubicación editable por interface, menú, tab y sección.
+- Orden oficial de enfrentamientos actualizado para grupos de 3, 4, 5 y 6 jugadores.
+- Soporte genérico para orden de enfrentamientos en grupos de 7 o más jugadores.
+- `package.json` actualizado a `6.7.0`.
+
+### Orden oficial de enfrentamientos aplicado
+
+**Grupo de 3**: 2 vs 3, 1 vs 3, 1 vs 2.
+
+**Grupo de 4**: 1 vs 4, 2 vs 3, 1 vs 3, 2 vs 4, 1 vs 2, 3 vs 4.
+
+**Grupo de 5**: 2 vs 5, 3 vs 4, 1 vs 5, 2 vs 3, 1 vs 4, 5 vs 3, 1 vs 3, 2 vs 4, 1 vs 2, 4 vs 5.
+
+**Grupo de 6**: 1 vs 6, 2 vs 5, 3 vs 4, 1 vs 5, 4 vs 6, 2 vs 3, 1 vs 4, 3 vs 5, 2 vs 6, 1 vs 3, 2 vs 4, 5 vs 6, 1 vs 2, 3 vs 6, 4 vs 5.
+
 ## Versión activa
 
-**CaromChamps v6.6.0** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
+**CaromChamps v6.7.2** mantiene la **Interface ProV** como experiencia predeterminada y conserva disponibles las interfaces **IA** y **Clásica** para transición controlada. La selección de interface se guarda en `localStorage`.
 
 ### Cambios principales v6.6.0
 

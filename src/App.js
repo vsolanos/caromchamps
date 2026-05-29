@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import appPackage from '../package.json';
-import { E, Card, Button, Badge, Stat, SectionTitle, EmptyState } from './components/ui.js';
+import { E, Card, Button, Badge, Stat, SectionTitle, EmptyState, Field, Input, Select } from './components/ui.js';
 import { PlayerHistoryModal } from './components/PlayerHistory.js';
 import { AuthGate } from './components/AuthGate.js';
 import { SharedChampionshipView } from './components/SharedView.js';
@@ -109,6 +109,56 @@ function ModeButtons({ uxMode, setUxMode, compact = false }) {
     onClick: () => setUxMode(id),
     title: hint
   }, E('span', null, compact ? label.replace('Interface ', '') : label), compact ? null : E('small', null, hint))));
+}
+
+function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
+  const [open, setOpen] = useState(false);
+  const tabMeta = getTabMeta(tab);
+  const defaultLocation = {
+    interfaceName: uxMode === 'pro' ? 'Interface ProV' : uxMode === 'guided' ? 'Interface IA' : 'Interface Clásica',
+    menu: tabMeta[1] || tab,
+    tab: tabMeta[1] || tab,
+    section: tabMeta[1] || tab
+  };
+  const [form, setForm] = useState({ ...defaultLocation, type: 'Mejora', comment: '' });
+
+  useEffect(() => {
+    if (!open) setForm((prev) => ({ ...prev, ...defaultLocation, comment: prev.comment || '' }));
+  }, [tab, uxMode, championship?.championship_id]);
+
+  const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const submit = () => {
+    if (!form.comment.trim()) return alert('Agregue el comentario, mejora o bug identificado.');
+    onSubmit?.({ ...form, championship_id: championship?.championship_id || '', championship_name: championship?.name || '', created_at: formatDateTimeEs(new Date()) });
+    setOpen(false);
+    setForm({ ...defaultLocation, type: 'Mejora', comment: '' });
+    alert('Feedback registrado en Auditoría.');
+  };
+
+  return E('div', { className: 'feedback-widget no-print' },
+    E(Button, { kind: 'primary', onClick: () => setOpen(true), title: 'Reportar mejora o bug' }, 'Feedback'),
+    open ? E('div', { className: 'feedback-overlay', role: 'dialog', 'aria-modal': 'true' },
+      E('div', { className: 'feedback-modal' },
+        E('div', { className: 'feedback-head' },
+          E('div', null, E('span', { className: 'ux-kicker' }, 'Mejora continua'), E('h2', null, 'Registrar feedback')),
+          E(Button, { kind: 'soft', onClick: () => setOpen(false) }, 'Cerrar')
+        ),
+        E('p', { className: 'small' }, `Campeonato: ${championship?.name || 'Sin campeonato'} · Ubicación detectada: ${defaultLocation.interfaceName} / ${defaultLocation.tab}`),
+        E('div', { className: 'grid grid-2', style: { marginTop: 14 } },
+          E(Field, { label: 'Interface' }, E(Input, { value: form.interfaceName, onChange: (event) => updateField('interfaceName', event.target.value) })),
+          E(Field, { label: 'Menú' }, E(Input, { value: form.menu, onChange: (event) => updateField('menu', event.target.value) })),
+          E(Field, { label: 'Tab' }, E(Input, { value: form.tab, onChange: (event) => updateField('tab', event.target.value) })),
+          E(Field, { label: 'Sección' }, E(Input, { value: form.section, onChange: (event) => updateField('section', event.target.value), placeholder: 'Ej. Tabla de agenda, cards, filtros, PDF...' })),
+          E(Field, { label: 'Tipo' }, E(Select, { value: form.type, onChange: (event) => updateField('type', event.target.value) }, ['Mejora', 'Bug', 'UX/UI', 'Reporte PDF', 'Datos', 'Otro'].map((item) => E('option', { key: item }, item))))
+        ),
+        E(Field, { label: 'Comentario' }, E('textarea', { className: 'input feedback-textarea', value: form.comment, onChange: (event) => updateField('comment', event.target.value), placeholder: 'Describa el hallazgo, mejora esperada o bug observado...' })),
+        E('div', { className: 'toolbar', style: { marginTop: 14, justifyContent: 'flex-end' } },
+          E(Button, { kind: 'soft', onClick: () => setOpen(false) }, 'Cancelar'),
+          E(Button, { kind: 'success', onClick: submit }, 'Guardar feedback')
+        )
+      )
+    ) : null
+  );
 }
 
 function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, setUxMode }) {
@@ -808,7 +858,7 @@ function ChampionshipWizard({ type, championships, onCreate, onCancel }) {
       E('label', null, 'Sede', E('input', { value: form.venue_name, onChange: (e) => update('venue_name', e.target.value) })),
       E('label', null, 'Fecha inicio', E('input', { type: 'date', value: form.start_date, onChange: (e) => update('start_date', e.target.value) })),
       E('label', null, 'Fecha final', E('input', { type: 'date', value: form.end_date, onChange: (e) => update('end_date', e.target.value) })),
-      E('label', null, 'Tamaño grupo', E('input', { type: 'number', min: 3, max: 6, value: form.preferred_group_size, onChange: (e) => update('preferred_group_size', e.target.value) }))
+      E('label', null, 'Tamaño grupo', E('input', { type: 'number', min: 3, max: 16, value: form.preferred_group_size, onChange: (e) => update('preferred_group_size', e.target.value) }))
     ) : null,
     step === 2 && type !== 'RANKING' ? E('div', { className: 'grid grid-4 pro-form-grid' },
       E('label', null, 'Clasificados por grupo', E('input', { type: 'number', value: form.qualifiers_per_group, onChange: (e) => update('qualifiers_per_group', e.target.value) })),
@@ -845,7 +895,7 @@ function ProChampionshipHub({ type, championships, activeId, loadChampionship, c
     ),
     wizardOpen ? E('div', { className: 'pro-wizard-overlay', role: 'dialog', 'aria-modal': 'true' }, E('div', { className: 'pro-wizard-modal' }, E(ChampionshipWizard, { type, championships, onCancel: () => setWizardOpen(false), onCreate: (form) => { createChampionshipFromWizard(form); setWizardOpen(false); } }))) : null,
     !rows.length ? E(EmptyState, { title: type === 'RANKING' ? 'Sin rankings' : 'Sin campeonatos normales', message: 'Cree el primer registro con el wizard guiado.' }) : E(Card, null,
-      E('div', { className: 'table-wrap' }, E('table', null,
+      E('div', { className: 'table-wrap' }, E('table', { className: 'championship-hub-table' },
         E('thead', null, E('tr', null, ['Activo', 'Campeonato', 'Estado', 'Fechas', 'Grupos', 'Partidas', 'Clasificados', 'Acciones'].map((h) => E('th', { key: h }, h)))),
         E('tbody', null, rows.map((row) => E('tr', { key: row.id, className: row.id === activeId ? 'selected-row' : '' },
           E('td', null, row.id === activeId ? E(Badge, { kind: 'success' }, 'Activo') : '-'),
@@ -934,7 +984,7 @@ function GroupsF2Module({ championship, setChampionship, players, matches, setMa
         E(Stat, { label: 'Pendientes', value: pending.length })
       ),
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
-        E('label', null, 'Tamaño grupo', E('select', { value: form.preferred_group_size, onChange: (e) => patch('preferred_group_size', Number(e.target.value)) }, [3,4,5,6].map((x) => E('option', { key: x, value: x }, x)))),
+        E('label', null, 'Tamaño grupo', E('select', { value: form.preferred_group_size, onChange: (e) => patch('preferred_group_size', Number(e.target.value)) }, [3,4,5,6,7,8,9,10].map((x) => E('option', { key: x, value: x }, x)))),
         E('label', null, 'Modo generación', E('select', { value: form.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, ['FULL_RANDOM', 'SEEDED_RANDOM', 'SEEDED_RANDOM_COUNTRY_SPREAD', 'SNAKE_DRAFT'].map((x) => E('option', { key: x, value: x }, x)))),
         E('label', null, 'Clasificados directos/grupo', E('input', { type: 'number', value: form.qualifiers_per_group, onChange: (e) => patch('qualifiers_per_group', Number(e.target.value)) })),
         E('label', null, 'Mejores adicionales', E('input', { type: 'number', value: form.extra_qualifiers_count, onChange: (e) => patch('extra_qualifiers_count', Number(e.target.value)) })),
@@ -1274,6 +1324,18 @@ function AppShell({ auth }) {
 ${link}`);
   };
 
+  const submitFeedback = (feedback) => {
+    const location = `${feedback.interfaceName} > ${feedback.menu} > ${feedback.tab} > ${feedback.section}`;
+    setItems((prev) => [{
+      id: uid('FB'),
+      type: `FEEDBACK_${String(feedback.type || 'GENERAL').toUpperCase().replace(/\W+/g, '_')}`,
+      detail: `${location} · ${feedback.comment}`,
+      timestamp: feedback.created_at || formatDateTimeEs(new Date()),
+      championship_id: feedback.championship_id || championship.championship_id,
+      feedback
+    }, ...prev]);
+  };
+
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
   const uiTheme = uiThemePreference === 'dark' ? 'dark' : 'light';
   const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking', 'reports'].includes(tab));
@@ -1314,6 +1376,7 @@ ${link}`);
       tab === 'audit' && E(AuditModule, { items }),
       tab === 'profile' && E(ProfileSettings, { auth, onProfileUpdated: auth?.updateProfile })
     ),
+    E(FeedbackButton, { championship, tab, uxMode, onSubmit: submitFeedback }),
     historyPlayerId ? E(PlayerHistoryModal, {
       player: players.find((p) => p.player_id === historyPlayerId),
       players,

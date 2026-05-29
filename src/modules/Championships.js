@@ -13,7 +13,7 @@ export function ChampionshipsModule({ championships, activeId, loadChampionship,
       )
     ),
     rows.length === 0 ? E(EmptyState, { title: 'Sin campeonatos', message: 'Cree el primer campeonato.' }) : E(Card, null,
-      E('div', { className: 'table-wrap' }, E('table', null,
+      E('div', { className: 'table-wrap' }, E('table', { className: 'championship-hub-table' },
         E('thead', null, E('tr', null, ['Activo', 'Campeonato', 'Estado', 'Fechas', 'Grupos', 'Partidas', 'Clasificados', 'Actualizado', 'Acciones'].map((h) => E('th', { key: h }, h)))),
         E('tbody', null, rows.map((row) => E('tr', { key: row.id, className: row.id === activeId ? 'selected-row' : '' },
           E('td', null, row.id === activeId ? E(Badge, { kind: 'success' }, 'Activo') : '-'),

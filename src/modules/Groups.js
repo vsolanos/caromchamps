@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { E, Card, Button, Badge, SectionTitle, EmptyState, Select } from '../components/ui.js';
+import { E, Card, Button, Badge, SectionTitle, EmptyState, Select, Field, Input } from '../components/ui.js';
 import { PdfControls, PdfDocument } from '../components/Print.js';
 import { PlayerHistoryTrigger } from '../components/PlayerHistory.js';
 import { startPdfPrint } from '../lib/print.js';
@@ -65,10 +65,14 @@ function classificationLabel(row, seeds, allComplete) {
 
 function playerCell(player, championship) {
   const intl = isInternationalChampionship(championship);
+  const name = playerName(player);
   return E('div', { className: 'group-standings-player-cell' },
     E('div', { className: 'group-standings-player-main aligned-flag-player' },
       E('span', { className: 'player-flag-slot' }, miniFlag(player.country_iso)),
-      E('span', { className: 'group-standings-player-name' }, E('b', null, E(PlayerHistoryTrigger, { player })))
+      E('span', { className: 'group-standings-player-name' },
+        E('b', null, E(PlayerHistoryTrigger, { player })),
+        E('span', { className: 'print-player-name', 'aria-hidden': 'true' }, name)
+      )
     ),
     E('div', { className: 'small player-submeta aligned-player-submeta' }, intl ? (player.country_iso || '-') : (player.association_code || '-'))
   );
@@ -120,22 +124,40 @@ function groupAgenda(group, matches, playersById, championship = {}) {
   const rows = matches.filter((m) => m.group_id === group.group_id).sort((a, b) => `${a.scheduled_date || ''} ${a.scheduled_time || ''} ${matchCode(a)}`.localeCompare(`${b.scheduled_date || ''} ${b.scheduled_time || ''} ${matchCode(b)}`));
   if (!rows.length) return E('p', { className: 'small' }, 'Sin partidas generadas para este grupo.');
   const headers = avgEnabled
-    ? ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador 1', 'Jugador 2', 'Marcador', 'Entradas', 'Promedios', 'Estado']
-    : ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador 1', 'Jugador 2', 'Marcador', 'Estado'];
-  return E('div', { className: 'table-wrap group-agenda-wrap', style: { marginTop: 12 } }, E('table', { className: 'group-agenda-table' },
+    ? ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador', 'Rival', 'CAR', 'ENTR', 'SM1', 'SM2', 'PROM', 'Puntos', 'Estado']
+    : ['ID', 'Fecha', 'Hora', 'Mesa', 'Jugador', 'Rival', 'CAR', 'SM1', 'SM2', 'Puntos', 'Estado'];
+  const playerPoints = (match, stats) => {
+    if (match.match_status !== 'COMPLETED') return '-';
+    if (match.winner_id === stats.player_id) return 2;
+    const otherStats = stats.player_id === match.player1_id ? matchPlayerStats(match, 2) : matchPlayerStats(match, 1);
+    return Number(stats.caroms) === Number(otherStats.caroms) && ['GROUPS', 'GROUPS_F2'].includes(match.phase) ? 1 : 0;
+  };
+  const renderPlayerRow = (match, playerNumber) => {
+    const stats = matchPlayerStats(match, playerNumber);
+    const rival = matchPlayerStats(match, playerNumber === 1 ? 2 : 1);
+    const player = playersById[stats.player_id];
+    const rivalPlayer = playersById[rival.player_id];
+    const completed = match.match_status === 'COMPLETED';
+    const cells = [
+      E('td', { className: 'agenda-match-code-cell' }, matchCode(match)),
+      E('td', null, formatDateEs(match.scheduled_date)),
+      E('td', null, match.scheduled_time || '-'),
+      E('td', null, match.assigned_table || '-'),
+      E('td', { className: stats.is_winner ? 'agenda-winner-player' : '' }, E(PlayerHistoryTrigger, { player })),
+      E('td', null, E(PlayerHistoryTrigger, { player: rivalPlayer })),
+      E('td', { className: 'agenda-score-cell agenda-caroms-cell' }, completed ? stats.caroms : '-'),
+      avgEnabled ? E('td', { className: 'agenda-innings-cell' }, completed ? stats.innings : '-') : null,
+      E('td', { className: 'agenda-sm-cell' }, completed ? stats.s1 : '-'),
+      E('td', { className: 'agenda-sm-cell' }, completed ? stats.s2 : '-'),
+      avgEnabled ? E('td', { className: 'agenda-avg-cell' }, completed ? stats.avg : '-') : null,
+      E('td', { className: 'agenda-points-cell' }, playerPoints(match, stats)),
+      E('td', { className: 'agenda-status-cell' }, E(Badge, { kind: completed ? 'success' : match.schedule_conflict ? 'danger' : 'neutral' }, completed ? 'Finalizada' : (match.schedule_conflict ? 'Conflicto' : matchDisplayStatus(match))))
+    ];
+    return E('tr', { key: `${match.match_id}-${playerNumber}`, className: `${completed ? 'agenda-completed-row completed-row' : ''} ${stats.is_winner ? 'agenda-winner-row' : ''}`.trim() }, ...cells);
+  };
+  return E('div', { className: 'table-wrap group-agenda-wrap', style: { marginTop: 12 } }, E('table', { className: 'group-agenda-table group-agenda-player-lines' },
     E('thead', null, E('tr', null, headers.map((h) => E('th', { key: h }, h)))),
-    E('tbody', null, rows.map((m) => {
-      const a = matchPlayerStats(m, 1);
-      const b = matchPlayerStats(m, 2);
-      return E('tr', { key: m.match_id, className: m.match_status === 'COMPLETED' ? 'agenda-completed-row completed-row' : '' },
-        E('td', null, matchCode(m)), E('td', null, formatDateEs(m.scheduled_date)), E('td', null, m.scheduled_time || '-'), E('td', null, m.assigned_table || '-'),
-        E('td', null, E(PlayerHistoryTrigger, { player: playersById[m.player1_id] })), E('td', null, E(PlayerHistoryTrigger, { player: playersById[m.player2_id] })),
-        E('td', { className: 'agenda-score-cell' }, m.match_status === 'COMPLETED' ? matchScore(m) : '-'),
-        avgEnabled ? E('td', null, m.match_status === 'COMPLETED' ? `${a.innings}/${b.innings}` : '-') : null,
-        avgEnabled ? E('td', null, m.match_status === 'COMPLETED' ? `${a.avg}/${b.avg}` : '-') : null,
-        E('td', { className: 'agenda-status-cell' }, E(Badge, { kind: m.match_status === 'COMPLETED' ? 'success' : m.schedule_conflict ? 'danger' : 'neutral' }, m.match_status === 'COMPLETED' ? 'Finalizada' : (m.schedule_conflict ? 'Conflicto' : matchDisplayStatus(m))))
-      );
-    }))
+    E('tbody', null, rows.flatMap((m) => [renderPlayerRow(m, 1), renderPlayerRow(m, 2)]))
   ));
 }
 
@@ -192,6 +214,8 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
   const [mutationMode, setMutationMode] = useState('');
   const [swapSelection, setSwapSelection] = useState([]);
   const [substitutePlayerId, setSubstitutePlayerId] = useState('');
+  const [groupFilter, setGroupFilter] = useState('ALL');
+  const [playerFilter, setPlayerFilter] = useState('');
 
   const hasLaterPhase = useMemo(() => matches.some((m) => ['PRE_ELIMINATION', 'KO'].includes(m.phase)), [matches]);
   const canReopenGroups = groups.length > 0 && seeds.length > 0 && championship.status === 'GROUPS_CLOSED' && !hasLaterPhase && !['CLOSED', 'FINALIZED', 'COMPLETED'].includes(championship.status);
@@ -367,14 +391,23 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
     audit('GROUP_PLAYER_SUBSTITUTED', `${playerName(source.player)} sustituido por ${playerName(replacement)} en ${source.group_name}.`);
   };
 
+  const normalizedPlayerFilter = playerFilter.trim().toLowerCase();
+  const filteredStandings = standings.filter((group) => {
+    const matchesGroup = groupFilter === 'ALL' || String(group.group_id) === groupFilter || String(group.group_name) === groupFilter;
+    const matchesPlayer = !normalizedPlayerFilter || group.players.some((player) => playerName(player).toLowerCase().includes(normalizedPlayerFilter));
+    return matchesGroup && matchesPlayer;
+  });
+
   const groupsContent = groups.length === 0
     ? E(EmptyState, { title: 'Sin grupos', message: 'Genere grupos desde esta pantalla para iniciar el campeonato.' })
-    : E('div', { className: 'grid grid-2 groups-list-print' }, standings.map((group) => E(Card, { key: group.group_id, className: 'group-print-card' },
-      E('div', { className: 'group-report-heading' }, E('div', null, E('p', { className: 'group-report-kicker' }, `Número de grupo: ${group.group_number}`), E('h3', { style: { margin: 0 } }, group.group_name)), E(Badge, { kind: 'info' }, `${group.players.length} jugadores`)),
-      E('details', { open: true, style: { marginTop: 10 } }, E('summary', { className: 'player-name' }, 'Conformación del grupo'), assignmentTable(group, swapSelection, handleGroupRowSelect, mutationMode)),
-      E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name' }, 'Tabla de posiciones'), standingsTable(group.standings, championship, displaySeeds, allComplete)),
-      E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name' }, 'Agenda del grupo'), groupAgenda(group, matches, playersById, championship))
-    )));
+    : filteredStandings.length === 0
+      ? E(EmptyState, { title: 'Sin grupos para el filtro', message: 'Ajuste el filtro por grupo o por jugador.' })
+      : E('div', { className: 'grid grid-2 groups-list-print' }, filteredStandings.map((group) => E(Card, { key: group.group_id, className: 'group-print-card' },
+        E('div', { className: 'group-report-heading group-report-heading-centered' }, E('div', null, E('p', { className: 'group-report-kicker' }, `Número de grupo: ${group.group_number}`), E('h3', { className: 'group-title-large' }, group.group_name)), E(Badge, { kind: 'info' }, `${group.players.length} jugadores`)),
+        E('details', { open: true, style: { marginTop: 10 } }, E('summary', { className: 'player-name' }, 'Conformación del grupo'), assignmentTable(group, swapSelection, handleGroupRowSelect, mutationMode)),
+        E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name group-section-title' }, 'Tabla de posiciones'), standingsTable(group.standings, championship, displaySeeds, allComplete)),
+        E('details', { open: true, style: { marginTop: 12 } }, E('summary', { className: 'player-name group-section-title' }, 'Agenda del grupo'), groupAgenda(group, matches, playersById, championship))
+      )));
 
   return E('div', { className: 'grid groups-export-root' },
     E(Card, { className: 'groups-control-card' },
@@ -382,6 +415,17 @@ export function GroupsModule({ championship, setChampionship, players, groups, s
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
         E(MiniStat, { label: 'Participantes', value: enrolled.length }), E(MiniStat, { label: 'Grupos esperados', value: expectedGroups }), E(MiniStat, { label: 'Clasificados F2', value: totalQualifiers }), E(MiniStat, { label: 'Partidas grupos', value: `${completedGroupMatches}/${groupMatches.length}` })
       ),
+      groups.length ? E('div', { className: 'group-filter-panel' },
+        E('div', { className: 'section-title' }, E('h2', null, 'Filtros de grupos'), E('p', null, 'Filtre por grupo o escriba el nombre de un jugador. Al buscar un jugador se muestra todo el grupo donde participó.')),
+        E('div', { className: 'grid grid-3', style: { marginTop: 12 } },
+          E(Field, { label: 'Grupo' }, E(Select, { value: groupFilter, onChange: (event) => setGroupFilter(event.target.value) },
+            E('option', { value: 'ALL' }, 'Todos los grupos'),
+            standings.map((group) => E('option', { key: group.group_id, value: group.group_id }, group.group_name))
+          )),
+          E(Field, { label: 'Jugador' }, E(Input, { value: playerFilter, onChange: (event) => setPlayerFilter(event.target.value), placeholder: 'Buscar jugador por nombre o apellido' })),
+          E('div', { className: 'toolbar', style: { alignItems: 'end' } }, E(Button, { kind: 'soft', onClick: () => { setGroupFilter('ALL'); setPlayerFilter(''); } }, 'Limpiar filtros'), E(Badge, { kind: 'info' }, `${filteredStandings.length}/${standings.length} grupos visibles`))
+        )
+      ) : null,
       groups.length ? E('div', { className: 'swap-helper-box group-mutation-box' },
         E('div', { className: 'group-mutation-message' },
           E('b', null, 'Intercambio / sustitución de jugadores: '),

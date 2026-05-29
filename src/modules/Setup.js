@@ -174,7 +174,7 @@ export function SetupModule({ championship, setChampionship, players, championsh
       E(SectionTitle, { title: 'Campeonato · Paso 3: Reglas y parámetros operativos', subtitle: 'Para campeonatos abiertos use INTERNACIONAL. Para selectivos use SELECTIVO: solo primera división y sin ascenso/descenso.' }),
       E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
         E(Field, { label: 'Modalidad' }, E(Select, { value: championship.play_mode, onChange: (e) => patch('play_mode', e.target.value) }, ['RACE', 'SETS'].map((x) => E('option', { key: x }, x)))),
-        E(Field, { label: 'Tamaño grupo' }, E(Select, { value: championship.preferred_group_size, onChange: (e) => patch('preferred_group_size', num(e.target.value)) }, [3, 4, 5, 6].map((x) => E('option', { key: x }, x)))),
+        E(Field, { label: 'Tamaño grupo' }, E(Select, { value: championship.preferred_group_size, onChange: (e) => patch('preferred_group_size', num(e.target.value)) }, [3, 4, 5, 6, 7, 8, 9, 10].map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Modo generación grupos' }, E(Select, { value: championship.group_generation_mode, onChange: (e) => patch('group_generation_mode', e.target.value) }, GROUP_MODES.map((x) => E('option', { key: x }, x)))),
         E(Field, { label: 'Clasificados directos/grupo' }, E(Input, { type: 'number', value: championship.qualifiers_per_group, onChange: (e) => patch('qualifiers_per_group', num(e.target.value)) })),
         E(Field, { label: 'Posición adicional' }, E(Input, { type: 'number', value: championship.extra_qualifier_position, onChange: (e) => patch('extra_qualifier_position', num(e.target.value)) })),
