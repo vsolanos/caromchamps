@@ -1,6 +1,25 @@
-# CaromChamps v7.0.0
+# CaromChamps v7.1.1
+## v7.1.1
 
-## CaromChamps v7.0.0
+Hotfix de la funcionalidad de inscripción pública. La publicación ahora actualiza inmediatamente el estado visual del tab Inscripciones, el enlace público se resuelve de forma más robusta y la página pública puede recuperar la publicación desde el registro público o desde el estado local del campeonato cuando la publicación esté marcada como activa. También se redujo el payload guardado para prevenir errores de cuota de almacenamiento local.
+
+### Validación
+
+```bash
+npm run check:syntax
+```
+
+### Prueba recomendada
+
+1. Abrir un campeonato.
+2. Ir al tab Inscripciones.
+3. Presionar Publicar inscripción.
+4. Confirmar que cambia a Página publicada.
+5. Abrir el enlace `/#register=ID` en la misma instancia/origen del navegador.
+6. Enviar una solicitud y sincronizarla desde el tab Inscripciones.
+
+
+## CaromChamps v7.1.1
 
 Hotfix de legibilidad para modo oscuro en el Tab Partidas. Los campos críticos de captura quedan forzados en azul oscuro `#0F2A5F`: Carambolas, Entradas, SM1, SM2, Tipo de resultado y Ganador manual. Se mantiene fondo gris claro `#E5E7EB` y se refuerza el estilo desde `Capture.js` y `styles.css` para evitar sobrescrituras por estilos globales.
 

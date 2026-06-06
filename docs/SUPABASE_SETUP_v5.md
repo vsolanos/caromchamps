@@ -1,4 +1,4 @@
-# CaromChamps v5.0.0 - Configuración Supabase
+# CaromChamps - Configuracion Supabase
 
 ## 1. Variables de entorno
 
@@ -22,15 +22,15 @@ http://localhost:5173/*
 
 ## 3. SQL
 
-Ejecutar el archivo:
+Ejecutar el archivo en Supabase > SQL Editor:
 
 ```text
 docs/supabase_schema_v5.sql
 ```
 
-en Supabase > SQL Editor.
+El script es idempotente y tambien migra proyectos instalados con roles antiguos.
 
-## 4. Usuario Admin
+## 4. Usuario Super usuario
 
 Crear o registrar el usuario con el correo:
 
@@ -38,8 +38,11 @@ Crear o registrar el usuario con el correo:
 vsolanos@gmail.com
 ```
 
-El script asigna automáticamente el rol `ADMIN` a ese correo cuando el usuario exista en Supabase Auth.
-No guardar contraseñas en GitHub ni en archivos del proyecto.
+El script asigna automaticamente el rol `SUPER_USER` a ese correo cuando el usuario exista en Supabase Auth. Los demas usuarios nuevos quedan como `USER`; el rol `VIEWER` puede asignarse desde la administracion de usuarios.
+
+Si el proyecto ya fue instalado con una version anterior, vuelva a ejecutar `docs/supabase_schema_v5.sql`. El script migra `ADMIN` a `SUPER_USER` y `ORGANIZER` a `USER`.
+
+No guardar contrasenas en GitHub ni en archivos del proyecto.
 
 ## 5. Proveedores sociales
 
@@ -53,10 +56,10 @@ Instagram queda para una fase posterior.
 
 ## 6. Storage
 
-El script crea el bucket público:
+El script crea el bucket publico:
 
 ```text
 user-avatars
 ```
 
-con límite de 5 MB y tipos permitidos JPG, PNG y WEBP.
+con limite de 5 MB y tipos permitidos JPG, PNG y WEBP.

@@ -69,7 +69,7 @@ export function AuthGate({ render }) {
       phone_country_code: user.user_metadata?.phone_country_code || '+506',
       phone_local: user.user_metadata?.phone_local || '',
       avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-      role: isAdminEmail(user.email) ? 'ADMIN' : 'ORGANIZER',
+      role: isAdminEmail(user.email) ? 'SUPER_USER' : 'USER',
       status: 'ACTIVE'
     } : null;
 
@@ -174,7 +174,7 @@ export function AuthGate({ render }) {
   if (loading) return E('div', { className: 'auth-page' }, E(Card, { className: 'auth-card' }, E('h2', null, 'Cargando CaromChamps...')));
 
   if (session?.user) {
-    const effectiveProfile = profile || { email: session.user.email, full_name: session.user.email, role: isAdminEmail(session.user.email) ? 'ADMIN' : 'ORGANIZER', status: 'ACTIVE' };
+    const effectiveProfile = profile || { email: session.user.email, full_name: session.user.email, role: isAdminEmail(session.user.email) ? 'SUPER_USER' : 'USER', status: 'ACTIVE' };
     return render({ session, user: session.user, profile: effectiveProfile, signOut, updateProfile: setProfile });
   }
 

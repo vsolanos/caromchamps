@@ -23,6 +23,8 @@ import { CloseTournamentModule } from './modules/CloseTournament.js';
 import { AuditModule } from './modules/Audit.js';
 import { RankingModule } from './modules/Ranking.js';
 import { AiSheetsModule } from './modules/AiSheets.js';
+import { UserManagementModule, ensureCurrentUserRecord, normalizePlatformRole, roleLabel, roleBadgeKind, canManageUsers } from './modules/Users.js';
+import { RegistrationModule, PublicRegistrationPage, publicRegistrationRouteFromLocation, importPublicRegistrationRequests } from './modules/Registrations.js';
 
 function loadState(storageKey = STORAGE_KEY, fallbackKey = '') {
   try {
@@ -42,7 +44,7 @@ function sharedTokenFromLocation() {
   return match?.[1] || '';
 }
 
-const RANKING_BLOCKED_TABS = new Set(['groups', 'groupsF2', 'schedule', 'matches', 'aiSheets', 'ko', 'reports', 'officials', 'close']);
+const RANKING_BLOCKED_TABS = new Set(['groups', 'groupsF2', 'schedule', 'matches', 'aiSheets', 'registrations', 'ko', 'officials', 'close']);
 const SIMPLE_ELIMINATION_BLOCKED_TABS = new Set(['groups', 'groupsF2']);
 const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
 const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
@@ -50,7 +52,7 @@ const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
   ['schedule', 'Calendario', '📅'], ['matches', 'Partidas', '●'], ['aiSheets', 'Planillas IA', '🤖'], ['ko', 'Llaves', '⑂'], ['reports', 'Reportes', '▤'], ['ranking', 'Ranking', '★'],
-  ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['feedback', 'Feedback', '💬'], ['audit', 'Auditoría', '◎']
+  ['registrations', 'Inscripciones', '📝'], ['users', 'Usuarios', '👥'], ['config', 'Configuración', '⚙'], ['profile', 'Perfil', '☻'], ['admin', 'Mantenimiento', '🛠'], ['officials', 'Árbitros', '♟'], ['close', 'Cierre', '✓'], ['feedback', 'Feedback', '💬'], ['audit', 'Auditoría', '◎']
 ];
 
 const GUIDED_NAV_GROUPS = [
@@ -58,7 +60,7 @@ const GUIDED_NAV_GROUPS = [
   { id: 'prepare', label: 'Preparar', hint: 'Datos y reglas', tabs: ['players', 'setup', 'groups'] },
   { id: 'operate', label: 'Operar', hint: 'Agenda, captura e IA', tabs: ['schedule', 'matches', 'aiSheets'] },
   { id: 'results', label: 'Resultados', hint: 'Llaves y reportes', tabs: ['ko', 'reports', 'ranking', 'close'] },
-  { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['config', 'profile', 'admin', 'officials', 'feedback', 'audit'] }
+  { id: 'admin', label: 'Administración', hint: 'Soporte y control', tabs: ['registrations', 'users', 'config', 'profile', 'admin', 'officials', 'feedback', 'audit'] }
 ];
 
 const PRO_PRIMARY_TABS = [
@@ -69,6 +71,7 @@ const PRO_PRIMARY_TABS = [
 
 const PRO_ADMIN_TABS = [
   ['players', 'Jugadores', '👤'],
+  ['users', 'Usuarios', '👥'],
   ['config', 'Configuración', '⚙'],
   ['profile', 'Perfil', '☻'],
   ['admin', 'Mantenimiento', '🛠'],
@@ -79,6 +82,7 @@ const PRO_ADMIN_TABS = [
 const PRO_WORKSPACE_TABS = [
   ['dashboard', 'Dashboard', '⌂'],
   ['setup', 'Campeonato', '⚙'],
+  ['registrations', 'Inscripciones', '📝'],
   ['groups', 'Grupos', '▦'],
   ['schedule', 'Calendario', '📅'],
   ['matches', 'Partidas', '●'],
@@ -93,6 +97,20 @@ const PRO_WORKSPACE_TAB_IDS = new Set([...PRO_WORKSPACE_TABS.map(([id]) => id), 
 function getTabMeta(id) {
   const found = NAV_TABS.find(([tabId]) => tabId === id);
   return found || [id, id, '•'];
+}
+
+const VIEWER_ALLOWED_TABS = new Set(['grand', 'dashboard', 'championships', 'rankingHub', 'reports', 'ranking', 'profile', 'feedback']);
+
+function canAccessTabByRole(role, tabId) {
+  const normalized = normalizePlatformRole(role);
+  if (normalized === 'SUPER_USER') return true;
+  if (normalized === 'VIEWER') return VIEWER_ALLOWED_TABS.has(tabId);
+  if (tabId === 'users') return false;
+  return true;
+}
+
+function filterTabsByRole(tabs, role) {
+  return (tabs || []).filter(([id]) => canAccessTabByRole(role, id));
 }
 
 function visibleTabsForChampionship(championship) {
@@ -167,16 +185,18 @@ function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
   );
 }
 
-function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, setUxMode }) {
+function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, setUxMode, userRole }) {
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
-  const tabs = visibleTabsForChampionship(championship);
+  const effectiveRole = normalizePlatformRole(userRole || auth?.profile?.role || 'USER');
+  const tabs = filterTabsByRole(visibleTabsForChampionship(championship), effectiveRole);
   const visibleIds = new Set(tabs.map(([id]) => id));
   const navigate = (id) => setTab(id);
   const isGuided = uxMode === 'guided';
   const isPro = uxMode === 'pro';
 
   if (isPro) {
-    const adminTabs = PRO_ADMIN_TABS.filter(([id]) => id !== 'officials');
+    const adminTabs = filterTabsByRole(PRO_ADMIN_TABS.filter(([id]) => id !== 'officials'), effectiveRole);
+    const primaryTabs = filterTabsByRole(PRO_PRIMARY_TABS, effectiveRole);
     return E('header', { className: `header guided-header pro-header ${collapsed ? 'collapsed' : ''}` },
       E('div', { className: 'brand-block guided-brand pro-brand' },
         E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
@@ -192,7 +212,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
       E('nav', { className: 'tabs guided-tabs pro-tabs', 'aria-label': 'Navegación Interface ProV' },
         E('section', { className: 'guided-nav-group pro-nav-group active' },
           E('div', { className: 'guided-nav-group-title' }, E('b', null, 'Inicio'), E('span', null, 'Gestión principal')),
-          PRO_PRIMARY_TABS.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))
+          primaryTabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))
         ),
         E('section', { className: 'guided-nav-group pro-nav-group' },
           E('div', { className: 'guided-nav-group-title' }, E('b', null, 'Administración'), E('span', null, 'Soporte y control')),
@@ -345,7 +365,7 @@ function TopBar({ championship, auth, setTab, uxMode, setUxMode }) {
       E(ModeButtons, { uxMode, setUxMode, compact: true }),
       E('span', { className: 'notification-pill' }, '3'),
       E('div', { className: 'avatar placeholder' }, (auth?.profile?.full_name || auth?.user?.email || 'CC').slice(0, 2).toUpperCase()),
-      E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${auth?.profile?.role || 'ORGANIZER'} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
+      E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${roleLabel(auth?.profile?.role || 'USER')} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
       E(Button, { onClick: () => setTab('profile'), kind: 'soft' }, 'Perfil'), E(Button, { onClick: auth?.signOut, kind: 'soft' }, 'Salir')
     )
   );
@@ -820,16 +840,16 @@ function GrandDashboard({ championships, players, openChampionshipDashboard, ope
   );
 }
 
-function ProWorkspaceTabs({ tab, setTab, championship }) {
+function ProWorkspaceTabs({ tab, setTab, championship, userRole }) {
   const type = championship?.championship_type || 'NORMAL';
   const isRanking = type === 'RANKING';
   const isDoubleGroups = type === 'DOBLE_FASE_GRUPOS';
   const isSimpleElimination = type === 'ELIMINACION_SIMPLE';
   const showGroupsF2 = isDoubleGroups;
   const baseTabs = isSimpleElimination ? PRO_WORKSPACE_TABS.filter(([id]) => id !== 'groups') : PRO_WORKSPACE_TABS;
-  const tabs = isRanking
+  const tabs = filterTabsByRole((isRanking
     ? [['dashboard', 'Dashboard', '⌂'], ['setup', 'Campeonato', '⚙'], ['ranking', 'Ranking', '★'], ['reports', 'Reportes', '▤']]
-    : baseTabs.flatMap((item) => item[0] === 'groups' && showGroupsF2 ? [item, PRO_DOUBLE_GROUPS_TAB] : [item]);
+    : baseTabs.flatMap((item) => item[0] === 'groups' && showGroupsF2 ? [item, PRO_DOUBLE_GROUPS_TAB] : [item])), userRole);
   return E(Card, { className: 'pro-workspace-tabs-card pro-workspace-tabs-sticky' },
     E('div', { className: 'pro-workspace-title' },
       E('div', null, E('span', { className: 'ux-kicker' }, 'Campeonato activo'), E('h2', null, championship?.name || 'Sin campeonato seleccionado')),
@@ -1120,7 +1140,7 @@ function cloneChampionship(championship, suffix = 'COPIA') {
 function AppShell({ auth }) {
   window.ReactRuntime = React;
   const storageKey = userStorageKey(auth?.user);
-  const saved = loadState(storageKey, auth?.profile?.role === 'ADMIN' ? STORAGE_KEY : '');
+  const saved = loadState(storageKey, ['ADMIN', 'SUPER_USER'].includes(String(auth?.profile?.role || '').toUpperCase()) ? STORAGE_KEY : '');
   const initialChampionship = saved?.championship || DEFAULT_CHAMPIONSHIP;
   const [players, setPlayers] = useState(saved?.players ? mergeDefaultPlayers(saved.players, DEFAULT_PLAYERS) : DEFAULT_PLAYERS.map(normalizeLegacyPlayerData));
   const [championship, setChampionship] = useState(initialChampionship);
@@ -1128,6 +1148,8 @@ function AppShell({ auth }) {
   const [matches, setMatches] = useState(saved?.matches || []);
   const [seeds, setSeeds] = useState(saved?.seeds || []);
   const [items, setItems] = useState(saved?.items || []);
+  const [appUsers, setAppUsers] = useState(() => ensureCurrentUserRecord(saved?.appUsers || [], auth));
+  const [registrationRequests, setRegistrationRequests] = useState(() => importPublicRegistrationRequests(saved?.registrationRequests || []));
   const initialHashTab = (() => { try { const value = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('tab'); return value || 'grand'; } catch { return 'grand'; } })();
   const [tab, setTabState] = useState(initialHashTab);
   const setTab = (nextTab) => {
@@ -1163,6 +1185,8 @@ function AppShell({ auth }) {
   const [remoteReady, setRemoteReady] = useState(false);
   const didLoadRemote = useRef(false);
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
+  const currentUserRecord = ensureCurrentUserRecord(appUsers, auth).find((item) => item.user_id === auth?.user?.id || String(item.email || '').toLowerCase() === String(auth?.user?.email || '').toLowerCase());
+  const userRole = normalizePlatformRole(currentUserRecord?.role || auth?.profile?.role || 'USER');
 
 
   useEffect(() => {
@@ -1192,7 +1216,7 @@ function AppShell({ auth }) {
 
   useEffect(() => {
     const nextTheme = championship.global_settings?.ui_theme === 'dark' ? 'dark' : 'light';
-    if (tab === 'config' && nextTheme !== uiThemePreference) {
+    if (!protectedTab && tab === 'config' && nextTheme !== uiThemePreference) {
       setUiThemePreference(nextTheme);
       try { localStorage.setItem(UI_THEME_KEY, nextTheme); } catch {}
     }
@@ -1237,6 +1261,8 @@ function AppShell({ auth }) {
       setMatches(state.matches || []);
       setSeeds(state.seeds || []);
       setItems(state.items || []);
+      setAppUsers(ensureCurrentUserRecord(state.appUsers || [], auth));
+      setRegistrationRequests(importPublicRegistrationRequests(state.registrationRequests || []));
       setChampionships(state.championships || [makeChampionshipSnapshot(state.championship || DEFAULT_CHAMPIONSHIP, state.groups || [], state.matches || [], state.seeds || [])]);
       setActiveId(state.activeId || state.championship?.championship_id || DEFAULT_CHAMPIONSHIP.championship_id);
       setSyncStatus('Datos cargados desde Supabase.');
@@ -1254,22 +1280,22 @@ function AppShell({ auth }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ players, championship, groups, matches, seeds, items, championships, activeId }));
+      localStorage.setItem(storageKey, JSON.stringify({ players, championship, groups, matches, seeds, items, appUsers, registrationRequests, championships, activeId }));
     } catch (error) {
       console.warn('No fue posible guardar el estado local. Revise tamaño de fotografías o almacenamiento del navegador.', error);
     }
-  }, [players, championship, groups, matches, seeds, items, championships, activeId, storageKey]);
+  }, [players, championship, groups, matches, seeds, items, appUsers, registrationRequests, championships, activeId, storageKey]);
 
   useEffect(() => {
     if (!auth?.user?.id || !remoteReady) return;
-    const state = { players, championship, groups, matches, seeds, items, championships, activeId };
+    const state = { players, championship, groups, matches, seeds, items, appUsers, registrationRequests, championships, activeId };
     const timer = setTimeout(() => {
       saveUserAppState(auth.user.id, state).then(({ error }) => {
         setSyncStatus(error ? `No sincronizado con Supabase: ${error.message}` : `Sincronizado con Supabase · ${formatDateTimeEs(new Date())}`);
       });
     }, 1000);
     return () => clearTimeout(timer);
-  }, [players, championship, groups, matches, seeds, items, championships, activeId, auth?.user?.id, remoteReady]);
+  }, [players, championship, groups, matches, seeds, items, appUsers, registrationRequests, championships, activeId, auth?.user?.id, remoteReady]);
 
   const audit = (type, detail) => setItems((prev) => [{ id: uid('A'), type, detail, timestamp: formatDateTimeEs(new Date()), championship_id: championship.championship_id }, ...prev]);
 
@@ -1360,6 +1386,8 @@ function AppShell({ auth }) {
     setActiveId(DEFAULT_CHAMPIONSHIP.championship_id);
     setChampionships([makeChampionshipSnapshot(DEFAULT_CHAMPIONSHIP, [], [], [])]);
     setItems([{ id: uid('A'), type: 'RESET', detail: 'Demo reiniciada', timestamp: formatDateTimeEs(new Date()) }]);
+    setAppUsers(ensureCurrentUserRecord([], auth));
+    setRegistrationRequests([]);
     setTab('dashboard');
   };
 
@@ -1411,16 +1439,17 @@ ${link}`);
   };
 
   const shared = { championship, setChampionship, players, setPlayers, groups, setGroups, matches, setMatches, seeds, setSeeds, audit };
+  const protectedTab = !canAccessTabByRole(userRole, tab);
   const uiTheme = uiThemePreference === 'dark' ? 'dark' : 'light';
   const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking', 'reports'].includes(tab));
   if (typeof window !== 'undefined') window.__CAROMCHAMPS_LANGUAGE__ = championship.global_settings?.language || 'es';
 
   return E('div', { className: `app-shell theme-${uiTheme} ${menuCollapsed ? 'menu-collapsed' : ''} ux-mode-${uxMode}` },
-    E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth, uxMode, setUxMode }),
+    E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth, uxMode, setUxMode, userRole }),
     E('main', { className: 'main' },
       E(TopBar, { championship, auth, setTab, uxMode, setUxMode }),
       uxMode === 'guided' ? E(UxContextPanel, { championship, championships, tab, setTab }) : null,
-      uxMode === 'pro' && isProWorkspaceTab ? E(ProWorkspaceTabs, { tab, setTab, championship }) : null,
+      uxMode === 'pro' && isProWorkspaceTab ? E(ProWorkspaceTabs, { tab, setTab, championship, userRole }) : null,
       !isRankingChampionship && !(uxMode === 'pro' && !isProWorkspaceTab) ? E(Card, null,
         E('div', { className: 'toolbar' },
           E(Button, { onClick: runFullDemo, kind: 'success' }, 'Demo completa'),
@@ -1429,28 +1458,31 @@ ${link}`);
           E(Button, { onClick: resetDemo, kind: 'danger' }, 'Reiniciar demo')
         )
       ) : null,
-      E('div', { className: 'sync-status' }, syncStatus),
-      tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players, openChampionshipDashboard: (id) => loadChampionship(id, 'reports'), openPlayerHistory: setHistoryPlayerId }),
-      tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab, openPlayerHistory: setHistoryPlayerId }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
-      tab === 'championships' && (uxMode === 'pro' ? E(ProChampionshipHub, { type: 'NORMAL', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) : E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship })),
-      tab === 'rankingHub' && uxMode === 'pro' && E(ProChampionshipHub, { type: 'RANKING', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }),
-      tab === 'players' && E(PlayersModule, shared),
-      tab === 'setup' && E(SetupModule, { championship, setChampionship, players, championships, activeId }),
-      tab === 'groups' && E(GroupsModule, shared),
-      tab === 'groupsF2' && E(GroupsF2Module, shared),
-      tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
-      tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit, uiTheme }),
-      tab === 'aiSheets' && E(AiSheetsModule, { championship, setChampionship, players, matches, setMatches, audit }),
-      tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, setSeeds, audit }),
-      tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
-      tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),
-      tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
-      tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
-      tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),
-      tab === 'close' && E(CloseTournamentModule, { championship, setChampionship, players, setPlayers, matches, setMatches, seeds, audit }),
-      tab === 'feedback' && E(FeedbackControlModule, { items, setItems, championship, setTab }),
-      tab === 'audit' && E(AuditModule, { items }),
-      tab === 'profile' && E(ProfileSettings, { auth, onProfileUpdated: auth?.updateProfile })
+      E('div', { className: 'sync-status' }, `${syncStatus} · Rol: ${roleLabel(userRole)}`),
+      protectedTab ? E(Card, { className: 'access-denied-card' }, E(SectionTitle, { title: 'Acceso restringido', subtitle: 'Su rol actual no tiene permisos para esta sección.' }), E('p', null, `Rol actual: ${roleLabel(userRole)}.`), E(Button, { kind: 'primary', onClick: () => setTab(userRole === 'VIEWER' ? 'reports' : 'dashboard') }, 'Ir a sección permitida')) : null,
+      !protectedTab && tab === 'grand' && uxMode === 'pro' && E(GrandDashboard, { championships, players, openChampionshipDashboard: (id) => loadChampionship(id, 'reports'), openPlayerHistory: setHistoryPlayerId }),
+      !protectedTab && tab === 'dashboard' && (uxMode === 'pro' ? E(ProChampionshipDashboard, { championship, players, groups, matches, seeds, championships, setTab, openPlayerHistory: setHistoryPlayerId }) : uxMode === 'guided' ? E(UxGuidedDashboard, { championship, players, groups, matches, seeds, championships, setTab }) : E(Dashboard, { championship, players, groups, matches, seeds, championships })),
+      !protectedTab && tab === 'championships' && (uxMode === 'pro' ? E(ProChampionshipHub, { type: 'NORMAL', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }) : E(ChampionshipsModule, { championships, activeId, loadChampionship, createChampionship, duplicateChampionship, deleteChampionship, championship, groups, matches, seeds, shareChampionship })),
+      !protectedTab && tab === 'rankingHub' && uxMode === 'pro' && E(ProChampionshipHub, { type: 'RANKING', championships, activeId, loadChampionship, createChampionshipFromWizard, duplicateChampionship, deleteChampionship, shareChampionship }),
+      !protectedTab && tab === 'players' && E(PlayersModule, shared),
+      !protectedTab && tab === 'setup' && E(SetupModule, { championship, setChampionship, players, championships, activeId }),
+      !protectedTab && tab === 'groups' && E(GroupsModule, shared),
+      !protectedTab && tab === 'groupsF2' && E(GroupsF2Module, shared),
+      !protectedTab && tab === 'schedule' && E(ScheduleModule, { championship, setChampionship, players, matches, setMatches, seeds, audit }),
+      !protectedTab && tab === 'matches' && E(CaptureModule, { championship, players, matches, setMatches, audit, uiTheme }),
+      !protectedTab && tab === 'aiSheets' && E(AiSheetsModule, { championship, setChampionship, players, matches, setMatches, audit }),
+      !protectedTab && tab === 'ko' && E(BracketModule, { championship, players, matches, setMatches, seeds, setSeeds, audit }),
+      !protectedTab && tab === 'reports' && E(ReportsModule, { players, matches, groups, seeds, championship }),
+      !protectedTab && tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),
+      !protectedTab && tab === 'registrations' && E(RegistrationModule, { championship, setChampionship, players, setPlayers, registrations: registrationRequests, setRegistrations: setRegistrationRequests, auth, audit }),
+      !protectedTab && tab === 'users' && E(UserManagementModule, { users: appUsers, setUsers: setAppUsers, auth, audit }),
+      !protectedTab && tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
+      !protectedTab && tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
+      !protectedTab && tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),
+      !protectedTab && tab === 'close' && E(CloseTournamentModule, { championship, setChampionship, players, setPlayers, matches, setMatches, seeds, audit }),
+      !protectedTab && tab === 'feedback' && E(FeedbackControlModule, { items, setItems, championship, setTab }),
+      !protectedTab && tab === 'audit' && E(AuditModule, { items }),
+      !protectedTab && tab === 'profile' && E(ProfileSettings, { auth, onProfileUpdated: auth?.updateProfile })
     ),
     E(FeedbackButton, { championship, tab, uxMode, onSubmit: submitFeedback }),
     historyPlayerId ? E(PlayerHistoryModal, {
@@ -1465,6 +1497,10 @@ ${link}`);
 }
 
 export default function App() {
+  const registrationChampionshipId = publicRegistrationRouteFromLocation();
+  if (registrationChampionshipId) {
+    return E(AppErrorBoundary, null, E(PublicRegistrationPage, { championshipId: registrationChampionshipId }));
+  }
   return E(AppErrorBoundary, null,
     E(AuthGate, { render: (auth) => {
       const token = sharedTokenFromLocation();

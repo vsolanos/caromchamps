@@ -5741,3 +5741,34 @@ select.input.capture-force-readable-input,
   .ai-sheets-flow { grid-template-columns: 1fr 1fr; }
   .ai-endpoint-row { grid-template-columns: 1fr; }
 }
+
+/* v7.1 · Usuarios e inscripciones públicas */
+.user-management-module,
+.registrations-module { gap: 18px; }
+.user-profile-summary,
+.user-cell { display: flex; align-items: center; gap: 12px; }
+.user-avatar-large,
+.user-avatar-mini { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #0f2a5f, #0ea5e9); color: white; font-weight: 900; box-shadow: 0 8px 20px rgba(15,42,95,.25); }
+.user-avatar-large { width: 72px; height: 72px; font-size: 26px; }
+.user-avatar-mini { width: 34px; height: 34px; font-size: 13px; }
+.user-form-grid label { font-weight: 800; }
+.inline-check { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; font-weight: 800; }
+.security-note { min-height: 42px; display: flex; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(14,165,233,.10); border: 1px solid rgba(14,165,233,.24); font-weight: 800; }
+.best-practice-list { margin: 10px 0 0; display: grid; gap: 8px; }
+.security-best-practices-card .round-card { min-height: 118px; }
+.access-denied-card { border: 1px solid rgba(239,68,68,.30) !important; background: linear-gradient(135deg, rgba(239,68,68,.08), rgba(15,42,95,.05)) !important; }
+.registration-publish-panel { margin-top: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px; border-radius: 16px; background: rgba(14,165,233,.09); border: 1px solid rgba(14,165,233,.22); }
+.registration-url-box { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: #0f172a; color: #bae6fd; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
+.public-registration-page { min-height: 100vh; padding: 32px; }
+.public-registration-shell { width: min(1180px, 100%); margin: 0 auto; display: grid; gap: 18px; }
+.public-registration-hero { background: linear-gradient(135deg, rgba(15,42,95,.96), rgba(14,165,233,.22)), url('/assets/auth-hero-caromchamps.png') center/cover; color: white; overflow: hidden; }
+.public-registration-hero .stat { background: rgba(255,255,255,.92); color: #0f172a; }
+.public-registration-form-card { border: 1px solid rgba(14,165,233,.28); }
+.registration-detected-player { margin-top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(34,197,94,.10); border: 1px solid rgba(34,197,94,.24); font-weight: 800; }
+.registrations-table td,
+.users-table td { vertical-align: top; }
+.theme-dark .registration-url-box { background: rgba(255,255,255,.10); color: #e0f2fe; }
+@media (max-width: 900px) {
+  .registration-publish-panel { flex-direction: column; align-items: stretch; }
+  .public-registration-page { padding: 16px; }
+}

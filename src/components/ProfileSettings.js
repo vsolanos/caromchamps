@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { E, Card, Button, Field, Input, Select, SectionTitle, Badge } from './ui.js';
 import { COUNTRIES, countryByIso, normalizePhone, validatePhoneByCountry } from '../lib/countries.js';
 import { auditCloudEvent, ensureUserProfile, supabase } from '../lib/supabase.js';
+import { roleLabel } from '../modules/Users.js';
 
 export function ProfileSettings({ auth, onProfileUpdated }) {
   const profile = auth?.profile || {};
@@ -59,7 +60,7 @@ export function ProfileSettings({ auth, onProfileUpdated }) {
       E('div', { className: 'profile-settings-layout' },
         E('div', { className: 'profile-avatar-preview' },
           draft.avatar_url ? E('img', { src: draft.avatar_url, alt: draft.full_name || 'Perfil' }) : E('span', null, (draft.full_name || draft.email || 'CC').slice(0, 2).toUpperCase()),
-          E(Badge, { kind: 'info' }, profile.role || 'ORGANIZER'),
+          E(Badge, { kind: 'info' }, roleLabel(profile.role || 'USER')),
           E('p', { className: 'small' }, profile.status || 'ACTIVE')
         ),
         E('div', { className: 'grid grid-2' },

@@ -26,7 +26,7 @@ export function isAdminEmail(email = '') {
 
 export function safeProfileRole(profile, user) {
   if (profile?.role) return profile.role;
-  return isAdminEmail(user?.email) ? 'ADMIN' : 'ORGANIZER';
+  return isAdminEmail(user?.email) ? 'SUPER_USER' : 'USER';
 }
 
 export async function ensureUserProfile(user, metadata = {}) {
@@ -40,7 +40,7 @@ export async function ensureUserProfile(user, metadata = {}) {
     phone_country_code: metadata.phone_country_code || user.user_metadata?.phone_country_code || '+506',
     phone_local: metadata.phone_local || user.user_metadata?.phone_local || '',
     avatar_url: metadata.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-    role: isAdminEmail(email) ? 'ADMIN' : 'ORGANIZER',
+    role: isAdminEmail(email) ? 'SUPER_USER' : 'USER',
     status: 'ACTIVE',
     updated_at: new Date().toISOString()
   };
@@ -119,5 +119,112 @@ export async function auditCloudEvent(userId, type, detail) {
     await withTimeout(supabase.from('audit_logs').insert({ user_id: userId, type, detail }), 'Auditoría', 5000);
   } catch (error) {
     console.warn('No fue posible registrar auditoría remota.', error);
+  }
+}
+export async function upsertPublicRegistrationPublication({ userId, championshipId, payload, isActive = true }) {
+  if (!championshipId) return { data: null, error: new Error('Campeonato sin identificador para publicar inscripcion.') };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('public_registration_publications').upsert({
+        championship_id: championshipId,
+        owner_user_id: userId || null,
+        payload,
+        is_active: isActive,
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'championship_id' }).select().single(),
+      'Publicacion de inscripcion',
+      8000
+    );
+    return { data, error };
+  } catch (error) {
+    console.warn('No fue posible publicar inscripcion en Supabase.', error);
+    return { data: null, error };
+  }
+}
+
+export async function getPublicRegistrationPublication(championshipId) {
+  if (!championshipId) return { data: null, error: null };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('public_registration_publications').select('payload, is_active, updated_at').eq('championship_id', championshipId).eq('is_active', true).maybeSingle(),
+      'Lectura de publicacion de inscripcion',
+      8000
+    );
+    return { data, error };
+  } catch (error) {
+    console.warn('No fue posible leer publicacion de inscripcion desde Supabase.', error);
+    return { data: null, error };
+  }
+}
+
+export async function submitPublicRegistrationRequest(request) {
+  if (!request?.registration_id || !request?.championship_id) return { data: null, error: new Error('Solicitud de inscripcion incompleta.') };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('public_registration_requests').insert({
+        registration_id: request.registration_id,
+        championship_id: request.championship_id,
+        payload: request,
+        status: request.status || 'RECIBIDA',
+        submitted_at: new Date().toISOString()
+      }).select().single(),
+      'Envio de solicitud de inscripcion',
+      8000
+    );
+    return { data, error };
+  } catch (error) {
+    console.warn('No fue posible enviar inscripcion publica a Supabase.', error);
+    return { data: null, error };
+  }
+}
+
+export async function listPublicRegistrationRequests(championshipId) {
+  if (!championshipId) return { requests: [], error: null };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from('public_registration_requests').select('registration_id, championship_id, payload, status, submitted_at, reviewed_at').eq('championship_id', championshipId).order('submitted_at', { ascending: false }),
+      'Lectura de solicitudes de inscripcion',
+      8000
+    );
+    const requests = (data || []).map((row) => ({
+      ...(row.payload || {}),
+      registration_id: row.registration_id,
+      championship_id: row.championship_id,
+      status: row.status || row.payload?.status || 'RECIBIDA',
+      submitted_at: row.payload?.submitted_at || row.submitted_at,
+      reviewed_at: row.payload?.reviewed_at || row.reviewed_at || ''
+    }));
+    return { requests, error };
+  } catch (error) {
+    console.warn('No fue posible cargar solicitudes de inscripcion desde Supabase.', error);
+    return { requests: [], error };
+  }
+}
+
+export async function updatePublicRegistrationRequest(registrationId, patch = {}) {
+  if (!registrationId) return { error: null };
+  try {
+    const { data: current, error: readError } = await withTimeout(
+      supabase.from('public_registration_requests').select('payload').eq('registration_id', registrationId).maybeSingle(),
+      'Lectura de solicitud de inscripcion',
+      8000
+    );
+    if (readError) return { error: readError };
+    const nextPayload = { ...(current?.payload || {}), ...patch };
+    const updatePayload = {
+      payload: nextPayload,
+      status: patch.status || nextPayload.status || 'RECIBIDA'
+    };
+    if (patch.reviewed_at) updatePayload.reviewed_at = new Date().toISOString();
+    const { error } = await withTimeout(
+      supabase.from('public_registration_requests').update(updatePayload).eq('registration_id', registrationId),
+      'Actualizacion de solicitud de inscripcion',
+      8000
+    );
+    return { error };
+  } catch (error) {
+    console.warn('No fue posible actualizar solicitud de inscripcion en Supabase.', error);
+    return { error };
   }
 }

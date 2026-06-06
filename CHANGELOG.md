@@ -1,4 +1,27 @@
 
+## v7.1.1
+
+- Hotfix de Inscripciones: corregida la publicación de la página pública para que el estado cambie inmediatamente a publicada después de presionar Publicar inscripción.
+- Inscripciones públicas: agregado resolvedor robusto de publicación que primero consulta el registro público y, si no existe, busca la publicación activa en el estado local de la aplicación.
+- Inscripciones públicas: mejor manejo de errores de almacenamiento local, mostrando mensaje claro si el navegador no permite guardar la publicación.
+- Inscripciones públicas: payload de publicación compactado para reducir riesgo de cuota localStorage y mejorar apertura del enlace.
+- Link público de inscripción mantiene formato /#register=ID_CAMPEONATO y permite fallback desde el estado local del campeonato publicado.
+
+
+## v7.1.0 - Gestión de usuarios e inscripción pública de campeonatos
+
+- Se agrega módulo **Usuarios** para administración de usuarios de plataforma con roles: Super usuario, Usuario normal y Visualizador.
+- Se incorporan estados de usuario, alcance de instancia, nivel de seguridad, MFA informativo, trazabilidad de cambios y buenas prácticas de privilegio mínimo.
+- Se agrega control de acceso por rol en la navegación ProV, IA y Clásica.
+- Se agrega módulo **Inscripciones** dentro del campeonato activo.
+- Cada campeonato puede publicar una página pública de inscripción con branding CaromChamps.
+- La página pública reconoce jugadores existentes por identificación, correo o nombre; si el jugador es nuevo, solicita los datos requeridos.
+- Las solicitudes quedan en bandeja de revisión con estados: RECIBIDA, VALIDADA, APROBADA, RECHAZADA, DUPLICADA y EN_REVISION.
+- Al aprobar una inscripción se sincroniza con el maestro de jugadores y con los participantes del campeonato.
+- La publicación genera un enlace público `#register=<championship_id>` y mantiene almacenamiento local de publicación/solicitudes para pruebas.
+- Preparado para llevar esta lógica a Supabase con RLS, tablas de usuarios, inscripciones y políticas por owner_user_id.
+
+
 ## v7.0.0
 
 - Nueva funcionalidad **Planillas IA** para carga masiva de PDF e imágenes de planillas firmadas.
