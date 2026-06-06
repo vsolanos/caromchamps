@@ -1,3 +1,12 @@
+## v7.2.0
+
+- Responsive ProV aplicado solamente bajo `.app-shell.ux-mode-pro`, sin modificar las interfaces IA ni Clasica.
+- Navegacion ProV adaptada para tablet y celular: header sticky, tabs horizontales, topbar flexible y controles tactiles.
+- Dashboards, formularios, toolbars, cards, tabs de campeonato, paneles de llaves, Partidas, Planillas IA y vistas operativas ajustadas con breakpoints responsivos.
+- Tablas operativas convertidas a tarjetas moviles en ProV para Usuarios, Inscripciones, Campeonatos, pendientes, Jugadores, Calendario, Grupos y Ranking.
+- Calendario recibio clases especificas para tablas de dias, bloqueos y agenda, permitiendo tarjetas moviles sin afectar otras interfaces.
+- README reconstruido como documento principal actualizado con estado real, instalacion, Supabase, Cloudflare Pages, verificacion, modulos e historial consolidado de versiones.
+- `package.json` actualizado a `7.2.0`.
 
 ## v7.1.1
 

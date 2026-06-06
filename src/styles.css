@@ -5772,3 +5772,832 @@ select.input.capture-force-readable-input,
   .registration-publish-panel { flex-direction: column; align-items: stretch; }
   .public-registration-page { padding: 16px; }
 }
+
+/* v7.2 ProV responsive layer. Scoped only to Interface ProV. */
+.app-shell.ux-mode-pro {
+  --prov-mobile-pad: clamp(10px, 3vw, 18px);
+  --prov-touch-target: 44px;
+}
+.app-shell.ux-mode-pro .btn,
+.app-shell.ux-mode-pro .input,
+.app-shell.ux-mode-pro select.input,
+.app-shell.ux-mode-pro textarea.input {
+  min-height: var(--prov-touch-target);
+}
+.app-shell.ux-mode-pro .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.app-shell.ux-mode-pro .card,
+.app-shell.ux-mode-pro .round-card,
+.app-shell.ux-mode-pro .topbar,
+.app-shell.ux-mode-pro .pro-hero,
+.app-shell.ux-mode-pro .pro-workspace-tabs-card {
+  max-width: 100%;
+}
+.app-shell.ux-mode-pro .table-wrap,
+.app-shell.ux-mode-pro .data-table-wrap,
+.app-shell.ux-mode-pro .bracket-zoom-viewport,
+.app-shell.ux-mode-pro .bracket-premium-panel,
+.app-shell.ux-mode-pro .face-to-face-premium,
+.app-shell.ux-mode-pro .ai-sheets-table-wrap {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.app-shell.ux-mode-pro .table-wrap {
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1180px) {
+  .app-shell.ux-mode-pro {
+    grid-template-columns: 232px minmax(0, 1fr);
+  }
+  .app-shell.ux-mode-pro.menu-collapsed {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
+  .app-shell.ux-mode-pro .header {
+    padding: 16px 12px;
+  }
+  .app-shell.ux-mode-pro .brand-logo-main {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+  .app-shell.ux-mode-pro .brand-title {
+    font-size: 18px;
+  }
+  .app-shell.ux-mode-pro .brand-secondary {
+    display: none;
+  }
+  .app-shell.ux-mode-pro .tab {
+    min-height: 42px;
+    padding: 9px 10px;
+  }
+  .app-shell.ux-mode-pro .main {
+    padding: 20px;
+  }
+  .app-shell.ux-mode-pro .grid-6,
+  .app-shell.ux-mode-pro .grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-shell.ux-mode-pro .grid-4,
+  .app-shell.ux-mode-pro .grid-3,
+  .app-shell.ux-mode-pro .pro-form-grid,
+  .app-shell.ux-mode-pro .user-form-grid,
+  .app-shell.ux-mode-pro .feedback-filter-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .app-shell.ux-mode-pro .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .topbar-user {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .app-shell.ux-mode-pro .mode-switcher.compact {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell.ux-mode-pro,
+  .app-shell.ux-mode-pro.menu-collapsed {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .header.pro-header {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    height: auto;
+    max-height: 58vh;
+    overflow: auto;
+    padding: 10px var(--prov-mobile-pad);
+    border-right: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, .18);
+    box-shadow: 0 18px 44px rgba(2, 6, 23, .32);
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-block {
+    padding: 4px 2px 8px;
+    border-bottom: 0;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-logo-main {
+    width: 42px;
+    height: 42px;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-title {
+    font-size: 18px;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-subtitle {
+    font-size: 11px;
+  }
+  .app-shell.ux-mode-pro .pro-header .menu-toolbar,
+  .app-shell.ux-mode-pro .pro-header .side-profile-actions {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .app-shell.ux-mode-pro .pro-header .menu-toolbar .btn,
+  .app-shell.ux-mode-pro .pro-header .side-profile-actions .btn {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+  .app-shell.ux-mode-pro .pro-header .tabs.pro-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-top: 8px;
+    padding-bottom: 8px;
+    scroll-snap-type: x proximity;
+  }
+  .app-shell.ux-mode-pro .pro-header .guided-nav-group,
+  .app-shell.ux-mode-pro .pro-header .pro-nav-group {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent !important;
+  }
+  .app-shell.ux-mode-pro .pro-header .guided-nav-group-title {
+    display: none !important;
+  }
+  .app-shell.ux-mode-pro .pro-header .tab {
+    flex: 0 0 auto;
+    width: auto;
+    min-height: var(--prov-touch-target);
+    border-radius: 999px;
+    padding: 9px 12px;
+    scroll-snap-align: start;
+  }
+  .app-shell.ux-mode-pro .main {
+    padding: var(--prov-mobile-pad);
+    gap: 14px;
+  }
+  .app-shell.ux-mode-pro .topbar {
+    border-radius: 18px;
+    padding: 14px;
+  }
+  .app-shell.ux-mode-pro .header-title {
+    font-size: clamp(20px, 6vw, 24px);
+    line-height: 1.12;
+  }
+  .app-shell.ux-mode-pro .topbar-user {
+    align-items: stretch;
+  }
+  .app-shell.ux-mode-pro .topbar-user .btn,
+  .app-shell.ux-mode-pro .mode-switcher.compact .mode-switch {
+    flex: 1 1 132px;
+  }
+  .app-shell.ux-mode-pro .pro-workspace-tabs-sticky {
+    position: static;
+    top: auto;
+  }
+  .app-shell.ux-mode-pro .pro-workspace-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .pro-workspace-tabs {
+    margin-inline: -4px;
+    padding: 0 4px 8px;
+    scroll-snap-type: x proximity;
+  }
+  .app-shell.ux-mode-pro .pro-workspace-tabs button {
+    min-height: var(--prov-touch-target);
+    scroll-snap-align: start;
+  }
+  .app-shell.ux-mode-pro .card {
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .app-shell.ux-mode-pro .toolbar {
+    align-items: stretch;
+  }
+  .app-shell.ux-mode-pro .toolbar .btn {
+    flex: 1 1 150px;
+  }
+  .app-shell.ux-mode-pro .grid-6,
+  .app-shell.ux-mode-pro .grid-5,
+  .app-shell.ux-mode-pro .grid-4,
+  .app-shell.ux-mode-pro .grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .app-shell.ux-mode-pro .grid-2,
+  .app-shell.ux-mode-pro .pro-form-grid,
+  .app-shell.ux-mode-pro .user-form-grid,
+  .app-shell.ux-mode-pro .feedback-filter-panel,
+  .app-shell.ux-mode-pro .profile-settings-layout,
+  .app-shell.ux-mode-pro .ux-context-panel,
+  .app-shell.ux-mode-pro .ux-action-center,
+  .app-shell.ux-mode-pro .ux-ranking-banner {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .pro-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    border-radius: 20px;
+    padding: 18px;
+  }
+  .app-shell.ux-mode-pro .pro-hero h1 {
+    font-size: clamp(24px, 8vw, 34px);
+  }
+  .app-shell.ux-mode-pro .stat {
+    min-height: 82px;
+  }
+  .app-shell.ux-mode-pro .stat-value {
+    font-size: clamp(22px, 7vw, 28px);
+    overflow-wrap: anywhere;
+  }
+  .app-shell.ux-mode-pro .data-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .data-table-toolbar .toolbar {
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .registration-publish-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .match-score-sheet-panel .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .capture-match-title-block {
+    min-width: 0;
+  }
+  .app-shell.ux-mode-pro .capture-match-heading,
+  .app-shell.ux-mode-pro .capture-match-subtitle {
+    overflow-wrap: anywhere;
+  }
+  .app-shell.ux-mode-pro .bracket-zoom-controls {
+    width: 100%;
+    justify-content: center;
+  }
+  .app-shell.ux-mode-pro .bracket-premium-panel,
+  .app-shell.ux-mode-pro .bracket-tabular-panel,
+  .app-shell.ux-mode-pro .face-to-face-premium {
+    border-radius: 18px;
+    padding: 12px;
+  }
+  .app-shell.ux-mode-pro .bracket-round-premium {
+    min-width: min(330px, calc(100vw - 46px)) !important;
+  }
+  .app-shell.ux-mode-pro .continuous-match {
+    min-height: 0;
+  }
+  .app-shell.ux-mode-pro .ai-sheets-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell.ux-mode-pro .grid,
+  .app-shell.ux-mode-pro .grid-2,
+  .app-shell.ux-mode-pro .grid-3,
+  .app-shell.ux-mode-pro .grid-4,
+  .app-shell.ux-mode-pro .grid-5,
+  .app-shell.ux-mode-pro .grid-6,
+  .app-shell.ux-mode-pro .ai-sheets-flow,
+  .app-shell.ux-mode-pro .auth-form-grid,
+  .app-shell.ux-mode-pro .public-registration-hero .grid {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .mode-switcher.compact {
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .mode-switcher.compact .mode-switch {
+    flex: 1 1 100%;
+  }
+  .app-shell.ux-mode-pro .topbar-user {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .app-shell.ux-mode-pro .topbar-user .notification-pill,
+  .app-shell.ux-mode-pro .topbar-user .mode-switcher,
+  .app-shell.ux-mode-pro .topbar-user .btn {
+    grid-column: 1 / -1;
+  }
+  .app-shell.ux-mode-pro .table-wrap,
+  .app-shell.ux-mode-pro .data-table-wrap,
+  .app-shell.ux-mode-pro .ai-sheets-table-wrap {
+    margin-inline: calc(var(--prov-mobile-pad) * -1);
+    border-radius: 0;
+    padding-inline: var(--prov-mobile-pad);
+  }
+  .app-shell.ux-mode-pro .table-wrap table,
+  .app-shell.ux-mode-pro .data-table-carom-table {
+    font-size: 12px;
+  }
+  .app-shell.ux-mode-pro th,
+  .app-shell.ux-mode-pro td {
+    padding: 8px;
+  }
+  .app-shell.ux-mode-pro .user-profile-summary,
+  .app-shell.ux-mode-pro .user-cell,
+  .app-shell.ux-mode-pro .registration-detected-player {
+    align-items: flex-start;
+  }
+  .app-shell.ux-mode-pro .public-registration-page {
+    padding: var(--prov-mobile-pad);
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell.ux-mode-pro .header.pro-header {
+    max-height: 64vh;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-block {
+    gap: 9px;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-logo-main {
+    width: 38px;
+    height: 38px;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-title {
+    font-size: 16px;
+  }
+  .app-shell.ux-mode-pro .pro-header .brand-subtitle {
+    display: none;
+  }
+  .app-shell.ux-mode-pro .pro-header .tab {
+    padding: 9px 10px;
+  }
+  .app-shell.ux-mode-pro .tab-icon {
+    width: auto;
+  }
+  .app-shell.ux-mode-pro .tab-label {
+    font-size: 12px;
+  }
+  .app-shell.ux-mode-pro .card {
+    padding: 12px;
+  }
+  .app-shell.ux-mode-pro .section-title h2 {
+    font-size: 18px;
+    line-height: 1.16;
+  }
+  .app-shell.ux-mode-pro .section-title p,
+  .app-shell.ux-mode-pro .small,
+  .app-shell.ux-mode-pro .field-hint {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .app-shell.ux-mode-pro .toolbar .btn,
+  .app-shell.ux-mode-pro .pdf-controls .field,
+  .app-shell.ux-mode-pro .pdf-controls .btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .pro-workspace-tabs button b {
+    font-size: 12px;
+  }
+  .app-shell.ux-mode-pro .pro-tab-index {
+    display: none;
+  }
+  .app-shell.ux-mode-pro .bracket-player-line {
+    grid-template-columns: 26px 34px minmax(0, 1fr) 38px !important;
+    gap: 7px;
+    padding: 7px;
+  }
+  .app-shell.ux-mode-pro .bracket-avatar {
+    width: 34px;
+    height: 34px;
+  }
+  .app-shell.ux-mode-pro .bracket-score {
+    min-height: 32px;
+    font-size: 15px;
+  }
+  .app-shell.ux-mode-pro .public-registration-hero {
+    background-position: center;
+  }
+}
+
+/* v7.2 ProV mobile cards for operational tables. */
+@media (max-width: 720px) {
+  .app-shell.ux-mode-pro .users-table,
+  .app-shell.ux-mode-pro .registrations-table,
+  .app-shell.ux-mode-pro .championship-hub-table,
+  .app-shell.ux-mode-pro .pro-pending-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+  .app-shell.ux-mode-pro .users-table thead,
+  .app-shell.ux-mode-pro .registrations-table thead,
+  .app-shell.ux-mode-pro .championship-hub-table thead,
+  .app-shell.ux-mode-pro .pro-pending-table thead {
+    display: none;
+  }
+  .app-shell.ux-mode-pro .users-table tbody,
+  .app-shell.ux-mode-pro .users-table tr,
+  .app-shell.ux-mode-pro .users-table td,
+  .app-shell.ux-mode-pro .registrations-table tbody,
+  .app-shell.ux-mode-pro .registrations-table tr,
+  .app-shell.ux-mode-pro .registrations-table td,
+  .app-shell.ux-mode-pro .championship-hub-table tbody,
+  .app-shell.ux-mode-pro .championship-hub-table tr,
+  .app-shell.ux-mode-pro .championship-hub-table td,
+  .app-shell.ux-mode-pro .pro-pending-table tbody,
+  .app-shell.ux-mode-pro .pro-pending-table tr,
+  .app-shell.ux-mode-pro .pro-pending-table td {
+    display: block;
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .users-table tr,
+  .app-shell.ux-mode-pro .registrations-table tr,
+  .app-shell.ux-mode-pro .championship-hub-table tr,
+  .app-shell.ux-mode-pro .pro-pending-table tr {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-border) 62%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow: 0 10px 26px rgba(2, 6, 23, .18);
+  }
+  .app-shell.ux-mode-pro .users-table tr.selected-row,
+  .app-shell.ux-mode-pro .championship-hub-table tr.selected-row {
+    border-color: color-mix(in srgb, var(--color-accent) 65%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 26%, transparent);
+  }
+  .app-shell.ux-mode-pro .users-table td,
+  .app-shell.ux-mode-pro .registrations-table td,
+  .app-shell.ux-mode-pro .championship-hub-table td,
+  .app-shell.ux-mode-pro .pro-pending-table td {
+    display: grid;
+    grid-template-columns: minmax(102px, .42fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent) !important;
+    padding: 10px 12px !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .app-shell.ux-mode-pro .users-table td:first-child,
+  .app-shell.ux-mode-pro .registrations-table td:first-child,
+  .app-shell.ux-mode-pro .championship-hub-table td:first-child,
+  .app-shell.ux-mode-pro .pro-pending-table td:first-child {
+    border-top: 0 !important;
+  }
+  .app-shell.ux-mode-pro .users-table td::before,
+  .app-shell.ux-mode-pro .registrations-table td::before,
+  .app-shell.ux-mode-pro .championship-hub-table td::before,
+  .app-shell.ux-mode-pro .pro-pending-table td::before {
+    color: var(--color-text-muted);
+    content: '';
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .app-shell.ux-mode-pro .users-table td:nth-child(1)::before { content: 'Usuario'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(2)::before { content: 'Rol'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(3)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(4)::before { content: 'Instancia'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(5)::before { content: 'MFA'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(6)::before { content: 'Ultimo acceso'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(7)::before { content: 'Notas'; }
+  .app-shell.ux-mode-pro .users-table td:nth-child(8)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(1)::before { content: 'Fecha'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(2)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(3)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(4)::before { content: 'Identificacion'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(5)::before { content: 'Contacto'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(6)::before { content: 'Origen'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(7)::before { content: 'Observaciones'; }
+  .app-shell.ux-mode-pro .registrations-table td:nth-child(8)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(1)::before { content: 'Activo'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(2)::before { content: 'Campeonato'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(3)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(4)::before { content: 'Fechas'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(5)::before { content: 'Grupos'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(6)::before { content: 'Partidas'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(7)::before { content: 'Clasificados'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(8)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .championship-hub-table td:nth-child(9)::before { content: 'Actualizado'; }
+  .app-shell.ux-mode-pro .pro-pending-table td:nth-child(1)::before { content: 'Partida'; }
+  .app-shell.ux-mode-pro .pro-pending-table td:nth-child(2)::before { content: 'Ronda'; }
+  .app-shell.ux-mode-pro .pro-pending-table td:nth-child(3)::before { content: 'Jugadores'; }
+  .app-shell.ux-mode-pro .pro-pending-table td:nth-child(4)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .pro-pending-table td:nth-child(5)::before { content: 'Accion'; }
+  .app-shell.ux-mode-pro .users-table .toolbar,
+  .app-shell.ux-mode-pro .registrations-table .toolbar,
+  .app-shell.ux-mode-pro .championship-hub-table .toolbar,
+  .app-shell.ux-mode-pro .pro-pending-table .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .app-shell.ux-mode-pro .users-table .toolbar .btn,
+  .app-shell.ux-mode-pro .registrations-table .toolbar .btn,
+  .app-shell.ux-mode-pro .championship-hub-table .toolbar .btn,
+  .app-shell.ux-mode-pro .pro-pending-table .toolbar .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell.ux-mode-pro .matches-export-root .matches-control-card .grid-6,
+  .app-shell.ux-mode-pro .matches-export-root .score-sheets-control-card .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .matches-export-root .matches-control-card .toolbar,
+  .app-shell.ux-mode-pro .matches-export-root .score-sheets-control-card .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .app-shell.ux-mode-pro .matches-export-root .matches-control-card .toolbar .btn,
+  .app-shell.ux-mode-pro .matches-export-root .score-sheets-control-card .toolbar .btn {
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .matches-print-scope .card > .toolbar:first-child {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .matches-print-scope .card > .grid.grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .matches-print-scope .card > .table-wrap {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .app-shell.ux-mode-pro .matches-print-scope .card > .table-wrap table {
+    min-width: 560px;
+  }
+  .app-shell.ux-mode-pro .matches-print-scope .card > .table-wrap .input {
+    min-width: 72px;
+  }
+  .app-shell.ux-mode-pro .capture-select-line {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-shell.ux-mode-pro .capture-select-line input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* v7.2 ProV mobile cards for remaining operational modules. */
+@media (max-width: 720px) {
+  .app-shell.ux-mode-pro .player-table,
+  .app-shell.ux-mode-pro .schedule-days-table,
+  .app-shell.ux-mode-pro .schedule-blackouts-table,
+  .app-shell.ux-mode-pro .schedule-agenda-table,
+  .app-shell.ux-mode-pro .group-standings-table,
+  .app-shell.ux-mode-pro .group-assignment-table,
+  .app-shell.ux-mode-pro .group-agenda-table,
+  .app-shell.ux-mode-pro .ranking-top10-table,
+  .app-shell.ux-mode-pro .ranking-detail-table,
+  .app-shell.ux-mode-pro .ranking-matrix-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: separate;
+    border-spacing: 0 12px;
+  }
+  .app-shell.ux-mode-pro .player-table thead,
+  .app-shell.ux-mode-pro .schedule-days-table thead,
+  .app-shell.ux-mode-pro .schedule-blackouts-table thead,
+  .app-shell.ux-mode-pro .schedule-agenda-table thead,
+  .app-shell.ux-mode-pro .group-standings-table thead,
+  .app-shell.ux-mode-pro .group-assignment-table thead,
+  .app-shell.ux-mode-pro .group-agenda-table thead,
+  .app-shell.ux-mode-pro .ranking-top10-table thead,
+  .app-shell.ux-mode-pro .ranking-detail-table thead,
+  .app-shell.ux-mode-pro .ranking-matrix-table thead {
+    display: none;
+  }
+  .app-shell.ux-mode-pro .player-table tbody,
+  .app-shell.ux-mode-pro .player-table tr,
+  .app-shell.ux-mode-pro .player-table td,
+  .app-shell.ux-mode-pro .schedule-days-table tbody,
+  .app-shell.ux-mode-pro .schedule-days-table tr,
+  .app-shell.ux-mode-pro .schedule-days-table td,
+  .app-shell.ux-mode-pro .schedule-blackouts-table tbody,
+  .app-shell.ux-mode-pro .schedule-blackouts-table tr,
+  .app-shell.ux-mode-pro .schedule-blackouts-table td,
+  .app-shell.ux-mode-pro .schedule-agenda-table tbody,
+  .app-shell.ux-mode-pro .schedule-agenda-table tr,
+  .app-shell.ux-mode-pro .schedule-agenda-table td,
+  .app-shell.ux-mode-pro .group-standings-table tbody,
+  .app-shell.ux-mode-pro .group-standings-table tr,
+  .app-shell.ux-mode-pro .group-standings-table td,
+  .app-shell.ux-mode-pro .group-assignment-table tbody,
+  .app-shell.ux-mode-pro .group-assignment-table tr,
+  .app-shell.ux-mode-pro .group-assignment-table td,
+  .app-shell.ux-mode-pro .group-agenda-table tbody,
+  .app-shell.ux-mode-pro .group-agenda-table tr,
+  .app-shell.ux-mode-pro .group-agenda-table td,
+  .app-shell.ux-mode-pro .ranking-top10-table tbody,
+  .app-shell.ux-mode-pro .ranking-top10-table tr,
+  .app-shell.ux-mode-pro .ranking-top10-table td,
+  .app-shell.ux-mode-pro .ranking-detail-table tbody,
+  .app-shell.ux-mode-pro .ranking-detail-table tr,
+  .app-shell.ux-mode-pro .ranking-detail-table td,
+  .app-shell.ux-mode-pro .ranking-matrix-table tbody,
+  .app-shell.ux-mode-pro .ranking-matrix-table tr,
+  .app-shell.ux-mode-pro .ranking-matrix-table td {
+    display: block;
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .player-table tr,
+  .app-shell.ux-mode-pro .schedule-days-table tr,
+  .app-shell.ux-mode-pro .schedule-blackouts-table tr,
+  .app-shell.ux-mode-pro .schedule-agenda-table tr,
+  .app-shell.ux-mode-pro .group-standings-table tr,
+  .app-shell.ux-mode-pro .group-assignment-table tr,
+  .app-shell.ux-mode-pro .group-agenda-table tr,
+  .app-shell.ux-mode-pro .ranking-top10-table tr,
+  .app-shell.ux-mode-pro .ranking-detail-table tr,
+  .app-shell.ux-mode-pro .ranking-matrix-table tr {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-border) 62%, transparent);
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow: 0 10px 26px rgba(2, 6, 23, .18);
+  }
+  .app-shell.ux-mode-pro .player-table tr.edit-row {
+    border-style: dashed;
+  }
+  .app-shell.ux-mode-pro .player-table tr.edit-row td {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell.ux-mode-pro .player-table tr.edit-row td::before {
+    content: 'Editar jugador';
+  }
+  .app-shell.ux-mode-pro .player-table td,
+  .app-shell.ux-mode-pro .schedule-days-table td,
+  .app-shell.ux-mode-pro .schedule-blackouts-table td,
+  .app-shell.ux-mode-pro .schedule-agenda-table td,
+  .app-shell.ux-mode-pro .group-standings-table td,
+  .app-shell.ux-mode-pro .group-assignment-table td,
+  .app-shell.ux-mode-pro .group-agenda-table td,
+  .app-shell.ux-mode-pro .ranking-top10-table td,
+  .app-shell.ux-mode-pro .ranking-detail-table td,
+  .app-shell.ux-mode-pro .ranking-matrix-table td {
+    display: grid;
+    grid-template-columns: minmax(104px, .42fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 45%, transparent) !important;
+    padding: 10px 12px !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .app-shell.ux-mode-pro .player-table td:first-child,
+  .app-shell.ux-mode-pro .schedule-days-table td:first-child,
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:first-child,
+  .app-shell.ux-mode-pro .schedule-agenda-table td:first-child,
+  .app-shell.ux-mode-pro .group-standings-table td:first-child,
+  .app-shell.ux-mode-pro .group-assignment-table td:first-child,
+  .app-shell.ux-mode-pro .group-agenda-table td:first-child,
+  .app-shell.ux-mode-pro .ranking-top10-table td:first-child,
+  .app-shell.ux-mode-pro .ranking-detail-table td:first-child,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:first-child {
+    border-top: 0 !important;
+  }
+  .app-shell.ux-mode-pro .player-table td::before,
+  .app-shell.ux-mode-pro .schedule-days-table td::before,
+  .app-shell.ux-mode-pro .schedule-blackouts-table td::before,
+  .app-shell.ux-mode-pro .schedule-agenda-table td::before,
+  .app-shell.ux-mode-pro .group-standings-table td::before,
+  .app-shell.ux-mode-pro .group-assignment-table td::before,
+  .app-shell.ux-mode-pro .group-agenda-table td::before,
+  .app-shell.ux-mode-pro .ranking-top10-table td::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td::before {
+    color: var(--color-text-muted);
+    content: '';
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: .04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+  .app-shell.ux-mode-pro .player-table td:nth-child(1)::before { content: 'Foto'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(2)::before { content: 'Codigo'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(3)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(4)::before { content: 'Pais'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(5)::before { content: 'Asociacion'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(6)::before { content: 'Division'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(7)::before { content: 'Promedios'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(8)::before { content: 'Contacto'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(9)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .player-table td:nth-child(10)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(1)::before { content: 'Dia'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(2)::before { content: 'Fecha'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(3)::before { content: 'Activo'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(4)::before { content: 'Inicio'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(5)::before { content: 'Fin'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(6)::before { content: 'Notas'; }
+  .app-shell.ux-mode-pro .schedule-days-table td:nth-child(7)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:nth-child(1)::before { content: 'Dia'; }
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:nth-child(2)::before { content: 'Inicio'; }
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:nth-child(3)::before { content: 'Fin'; }
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:nth-child(4)::before { content: 'Razon'; }
+  .app-shell.ux-mode-pro .schedule-blackouts-table td:nth-child(5)::before { content: 'Acciones'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(1)::before { content: 'ID'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(2)::before { content: 'Fecha'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(3)::before { content: 'Hora'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(4)::before { content: 'Mesa'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(5)::before { content: 'Fase'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(6)::before { content: 'Ronda/Grupo'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(7)::before { content: 'Jugador 1'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(8)::before { content: 'Jugador 2'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(9)::before { content: 'Marcador'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(10)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .schedule-agenda-table td:nth-child(11)::before { content: 'Intercambiar'; }
+  .app-shell.ux-mode-pro .group-assignment-table td:nth-child(1)::before { content: 'Orden'; }
+  .app-shell.ux-mode-pro .group-assignment-table td:nth-child(2)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .group-assignment-table td:nth-child(3)::before { content: 'Pais'; }
+  .app-shell.ux-mode-pro .group-assignment-table td:nth-child(4)::before { content: 'Asociacion'; }
+  .app-shell.ux-mode-pro .group-assignment-table td:nth-child(5)::before { content: 'No CBZ'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(1)::before { content: 'POS'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(2)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(3)::before { content: 'PJ'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(4)::before { content: 'PG'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(5)::before { content: 'PE'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(6)::before { content: 'PP'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(7)::before { content: 'CAR'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(8)::before { content: 'ENTR / SM1'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(9)::before { content: 'SM1 / SM2'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(10)::before { content: 'SM2 / Puntos'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(11)::before { content: 'PROM / Clasif.'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(12)::before { content: 'Puntos'; }
+  .app-shell.ux-mode-pro .group-standings-table td:nth-child(13)::before { content: 'Clasificacion'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(1)::before { content: 'ID'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(2)::before { content: 'Fecha'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(3)::before { content: 'Hora'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(4)::before { content: 'Mesa'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(5)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(6)::before { content: 'Rival'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(7)::before { content: 'CAR'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(8)::before { content: 'ENTR / SM1'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(9)::before { content: 'SM1 / SM2'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(10)::before { content: 'SM2 / Puntos'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(11)::before { content: 'PROM / Estado'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(12)::before { content: 'Puntos'; }
+  .app-shell.ux-mode-pro .group-agenda-table td:nth-child(13)::before { content: 'Estado'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(1)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(1)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(1)::before { content: 'Pos'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(2)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(2)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(2)::before { content: 'Jugador'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(3)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(3)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(3)::before { content: 'PRG / Camp.'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(4)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(4)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(4)::before { content: 'PJ / PRG'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(5)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(5)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(5)::before { content: 'PG / PJ'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(6)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(6)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(6)::before { content: 'PP / PG'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(7)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(7)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(7)::before { content: 'PE / PP'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(8)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(8)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(8)::before { content: 'CAR / PE'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(9)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(9)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(9)::before { content: 'ENT / CAR'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(10)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(10)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(10)::before { content: 'AVG / ENT'; }
+  .app-shell.ux-mode-pro .ranking-top10-table td:nth-child(11)::before,
+  .app-shell.ux-mode-pro .ranking-detail-table td:nth-child(11)::before,
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(11)::before { content: 'Mejor / AVG'; }
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(12)::before { content: 'Mejor Pos.'; }
+  .app-shell.ux-mode-pro .ranking-matrix-table td:nth-child(n+13)::before { content: 'Campeonato'; }
+  .app-shell.ux-mode-pro .player-table .toolbar,
+  .app-shell.ux-mode-pro .schedule-days-table .toolbar,
+  .app-shell.ux-mode-pro .schedule-blackouts-table .toolbar,
+  .app-shell.ux-mode-pro .schedule-agenda-table .toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .app-shell.ux-mode-pro .player-table .toolbar .btn,
+  .app-shell.ux-mode-pro .schedule-days-table .toolbar .btn,
+  .app-shell.ux-mode-pro .schedule-blackouts-table .toolbar .btn,
+  .app-shell.ux-mode-pro .schedule-agenda-table .toolbar .btn {
+    width: 100%;
+  }
+  .app-shell.ux-mode-pro .player-table .edit-panel .toolbar {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+  .app-shell.ux-mode-pro .player-table .edit-panel .toolbar .btn {
+    width: 100%;
+  }
+}

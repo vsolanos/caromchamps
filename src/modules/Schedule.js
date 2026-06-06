@@ -146,7 +146,7 @@ export function ScheduleModule({ championship, setChampionship, players = [], ma
       E(PdfDocument, { title: 'Reporte de Calendario', subtitle: 'Días, bloques y agenda editable del campeonato', championship, meta: [`Partidas: ${matches.length}`, `Agendadas: ${scheduled}`, `Conflictos: ${conflicts}`] },
       E(Card, null,
       E(SectionTitle, { title: 'Días y bloques', subtitle: 'La columna Día muestra D-1, D-2, etc., no identificadores técnicos.' }),
-      E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', null,
+      E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', { className: 'schedule-days-table' },
         E('thead', null, E('tr', null, ['Día', 'Fecha', 'Activo', 'Inicio', 'Fin', 'Notas', 'Acciones'].map((h) => E('th', { key: h }, h)))),
         E('tbody', null, days.map((day, index) => E('tr', { key: day.schedule_day_id },
           E('td', null, `D-${index + 1}`),
@@ -158,7 +158,7 @@ export function ScheduleModule({ championship, setChampionship, players = [], ma
           E('td', null, E(Button, { onClick: () => removeDay(day.schedule_day_id), kind: 'danger' }, 'Eliminar'))
         )))
       )),
-      blackouts.length ? E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', null,
+      blackouts.length ? E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', { className: 'schedule-blackouts-table' },
         E('thead', null, E('tr', null, ['Día', 'Inicio', 'Fin', 'Razón', 'Acciones'].map((h) => E('th', { key: h }, h)))),
         E('tbody', null, blackouts.map((b) => E('tr', { key: b.blackout_id },
           E('td', null, E(Select, { value: b.schedule_day_id, onChange: (e) => patchBlock(b.blackout_id, 'schedule_day_id', e.target.value) }, days.map((d, index) => E('option', { key: d.schedule_day_id, value: d.schedule_day_id }, `${dayLabel(days, d.schedule_day_id)} · ${formatDateEs(d.play_date)}`)))),
@@ -179,7 +179,7 @@ export function ScheduleModule({ championship, setChampionship, players = [], ma
         E(Field, { label: 'Orden 1' }, E(Select, { value: filters.sort1, onChange: (e) => setFilters({ ...filters, sort1: e.target.value }) }, sortOptions.map(([v, l]) => E('option', { key: v, value: v }, l)))),
         E(Field, { label: 'Orden 2' }, E(Select, { value: filters.sort2, onChange: (e) => setFilters({ ...filters, sort2: e.target.value }) }, sortOptions.map(([v, l]) => E('option', { key: v, value: v }, l))))
       ),
-      visibleMatches.length === 0 ? E(EmptyState, { title: 'Sin partidas', message: 'Genere grupos o ajuste filtros.' }) : E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', null,
+      visibleMatches.length === 0 ? E(EmptyState, { title: 'Sin partidas', message: 'Genere grupos o ajuste filtros.' }) : E('div', { className: 'table-wrap', style: { marginTop: 14 } }, E('table', { className: 'schedule-agenda-table' },
         E('thead', null, E('tr', null, ['ID', 'Fecha', 'Hora', 'Mesa', 'Fase', 'Ronda/Grupo', 'Jugador 1', 'Jugador 2', 'Marcador', 'Estado', 'Intercambiar'].map((h) => E('th', { key: h }, h)))),
         E('tbody', null, visibleMatches.map((match) => E('tr', { key: match.match_id, className: `${swapFirst === match.match_id ? 'swap-selected' : ''} ${match.match_status === 'COMPLETED' ? 'completed-row' : ''}`.trim() },
           E('td', null, matchCode(match)),
