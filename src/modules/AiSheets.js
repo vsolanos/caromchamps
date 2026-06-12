@@ -35,7 +35,7 @@ function defaultParsed() {
 
 function parseJsonPayload(text) {
   const raw = String(text || '').trim();
-  if (!raw || !/^[\[{]/.test(raw)) return null;
+  if (!raw || !/^[[{]/.test(raw)) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
 

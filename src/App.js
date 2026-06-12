@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import appPackage from '../package.json';
 import { E, Card, Button, Badge, Stat, SectionTitle, EmptyState, Field, Input, Select } from './components/ui.js';
 import { PlayerHistoryModal } from './components/PlayerHistory.js';
+import { NotificationsHost, notify, confirmAction } from './components/notify.js';
 import { AuthGate } from './components/AuthGate.js';
 import { SharedChampionshipView } from './components/SharedView.js';
 import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
-import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY } from './data/defaults.js';
+import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY, UX_MODE_KEY, UI_THEME_KEY } from './data/defaults.js';
 import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, usesAverageControl, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg, calculateTotalQualifiers, num } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
 import { PlayersModule } from './modules/Players.js';
@@ -46,8 +47,6 @@ function sharedTokenFromLocation() {
 
 const RANKING_BLOCKED_TABS = new Set(['groups', 'groupsF2', 'schedule', 'matches', 'aiSheets', 'registrations', 'ko', 'officials', 'close']);
 const SIMPLE_ELIMINATION_BLOCKED_TABS = new Set(['groups', 'groupsF2']);
-const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
-const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 
 const NAV_TABS = [
   ['championships', 'Campeonatos', '🏆'], ['dashboard', 'Dashboard', '⌂'], ['players', 'Jugadores', '👤'], ['setup', 'Campeonato', '⚙'], ['groups', 'Grupos', '▦'],
@@ -152,11 +151,11 @@ function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
 
   const updateField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const submit = () => {
-    if (!form.comment.trim()) return alert('Agregue el comentario, mejora o bug identificado.');
+    if (!form.comment.trim()) return notify('Agregue el comentario, mejora o bug identificado.', 'warning');
     onSubmit?.({ ...form, status: 'Recibido', championship_id: championship?.championship_id || '', championship_name: championship?.name || '', created_at: formatDateTimeEs(new Date()) });
     setOpen(false);
     setForm({ ...defaultLocation, type: 'Mejora', comment: '' });
-    alert('Feedback registrado en Auditoría.');
+    notify('Feedback registrado en Auditoría.', 'success');
   };
 
   return E('div', { className: 'feedback-widget no-print' },
@@ -1034,10 +1033,10 @@ function GroupsF2Module({ championship, setChampionship, players, matches, setMa
     participant_seeds: Object.fromEntries(qualifiedPlayers.map((p, index) => [p.player_id, index + 1])),
     total_qualifiers_f2: Number(form.total_qualifiers_f2 || championship.total_qualifiers_f2 || 8)
   };
-  const generateF2 = () => {
-    if (championship.championship_type !== 'DOBLE_FASE_GRUPOS') return alert('Grupos F2 solo aplica para campeonatos tipo Doble Fase Grupos.');
-    if (!qualifiedPlayers.length) return alert('Primero debe clasificar la primera fase de grupos.');
-    if (groupsF2.length && !window.confirm('Ya existen Grupos F2. Regenerarlos eliminará partidas y clasificados de esta fase. ¿Desea continuar?')) return;
+  const generateF2 = async () => {
+    if (championship.championship_type !== 'DOBLE_FASE_GRUPOS') return notify('Grupos F2 solo aplica para campeonatos tipo Doble Fase Grupos.', 'warning');
+    if (!qualifiedPlayers.length) return notify('Primero debe clasificar la primera fase de grupos.', 'warning');
+    if (groupsF2.length && !(await confirmAction('Ya existen Grupos F2. Regenerarlos eliminará partidas y clasificados de esta fase. ¿Desea continuar?'))) return;
     const generatedGroups = generateGroups(f2ChampionshipConfig, qualifiedPlayers).map((group, index) => ({
       ...group,
       group_id: `F2-${group.group_id || index + 1}`,
@@ -1057,8 +1056,8 @@ function GroupsF2Module({ championship, setChampionship, players, matches, setMa
     audit?.('GROUPS_F2_GENERATED', `${generatedGroups.length} grupos F2 y ${generatedMatches.length} partidas generadas.`);
   };
   const classifyF2 = () => {
-    if (!groupsF2.length) return alert('Debe generar Grupos F2 antes de clasificar.');
-    if (pending.length) return alert('Hay partidas pendientes en Grupos F2. Complete resultados antes de clasificar.');
+    if (!groupsF2.length) return notify('Debe generar Grupos F2 antes de clasificar.', 'warning');
+    if (pending.length) return notify('Hay partidas pendientes en Grupos F2. Complete resultados antes de clasificar.', 'warning');
     const qualified = qualify(standingsF2, { ...championship, ...form });
     setSeeds(qualified);
     setChampionship({ ...championship, groups_f2: standingsF2, f2_settings: form, seeds_f2: qualified, status: 'GROUPS_F2_CLOSED' });
@@ -1184,6 +1183,8 @@ function AppShell({ auth }) {
   const [syncStatus, setSyncStatus] = useState('Sincronización local activa');
   const [remoteReady, setRemoteReady] = useState(false);
   const didLoadRemote = useRef(false);
+  const remoteUpdatedAtRef = useRef(null);
+  const syncConflictRef = useRef(false);
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
   const currentUserRecord = ensureCurrentUserRecord(appUsers, auth).find((item) => item.user_id === auth?.user?.id || String(item.email || '').toLowerCase() === String(auth?.user?.email || '').toLowerCase());
   const userRole = normalizePlatformRole(currentUserRecord?.role || auth?.profile?.role || 'USER');
@@ -1244,12 +1245,13 @@ function AppShell({ auth }) {
   useEffect(() => {
     if (!auth?.user?.id || didLoadRemote.current) return;
     didLoadRemote.current = true;
-    loadUserAppState(auth.user.id).then(({ state, error }) => {
+    loadUserAppState(auth.user.id).then(({ state, error, updated_at }) => {
       if (error) {
         setSyncStatus(`Sincronización local activa. Supabase: ${error.message}`);
         setRemoteReady(true);
         return;
       }
+      remoteUpdatedAtRef.current = updated_at || null;
       if (!state) {
         setSyncStatus('Sincronizado localmente. Pendiente primera copia en Supabase.');
         setRemoteReady(true);
@@ -1290,7 +1292,14 @@ function AppShell({ auth }) {
     if (!auth?.user?.id || !remoteReady) return;
     const state = { players, championship, groups, matches, seeds, items, appUsers, registrationRequests, championships, activeId };
     const timer = setTimeout(() => {
-      saveUserAppState(auth.user.id, state).then(({ error }) => {
+      if (syncConflictRef.current) return;
+      saveUserAppState(auth.user.id, state, remoteUpdatedAtRef.current).then(({ error, conflict, updatedAt }) => {
+        if (conflict) {
+          syncConflictRef.current = true;
+          setSyncStatus('⚠ Conflicto de sincronización: los datos cambiaron desde otra sesión o dispositivo. No se sobrescribió la nube; recargue la página para traer la versión más reciente.');
+          return;
+        }
+        if (updatedAt) remoteUpdatedAtRef.current = updatedAt;
         setSyncStatus(error ? `No sincronizado con Supabase: ${error.message}` : `Sincronizado con Supabase · ${formatDateTimeEs(new Date())}`);
       });
     }, 1000);
@@ -1370,9 +1379,9 @@ function AppShell({ auth }) {
     setTab('setup');
   };
 
-  const deleteChampionship = (id) => {
-    if (id === activeId) return alert('No se puede eliminar el campeonato activo. Abra otro campeonato primero.');
-    if (!window.confirm('¿Eliminar campeonato y todos sus datos locales?')) return;
+  const deleteChampionship = async (id) => {
+    if (id === activeId) return notify('No se puede eliminar el campeonato activo. Abra otro campeonato primero.', 'warning');
+    if (!(await confirmAction('¿Eliminar campeonato y todos sus datos locales?'))) return;
     setChampionships(championships.filter((row) => row.id !== id));
   };
 
@@ -1417,12 +1426,12 @@ function AppShell({ auth }) {
     const row = championships.find((item) => item.id === rowId) || makeChampionshipSnapshot(championship, groups, matches, seeds);
     const snapshot = { ...row, players, championship: row.championship || championship, groups: row.groups || groups, matches: row.matches || matches, seeds: row.seeds || seeds };
     const { data, error } = await createChampionshipShare({ userId: auth?.user?.id, championshipSnapshot: snapshot });
-    if (error) { alert(`No fue posible generar el enlace: ${error.message}`); return; }
+    if (error) { notify(`No fue posible generar el enlace: ${error.message}`, 'danger'); return; }
     const link = `${window.location.origin}/shared/championship/${data.token}`;
     try { await navigator.clipboard.writeText(link); } catch {}
     audit('SHARE_CREATED', `Enlace compartido generado para ${snapshot.name || championship.name}`);
-    alert(`Enlace copiado para compartir:
-${link}`);
+    notify(`Enlace copiado para compartir:
+${link}`, 'success');
   };
 
   const submitFeedback = (feedback) => {
@@ -1499,9 +1508,10 @@ ${link}`);
 export default function App() {
   const registrationChampionshipId = publicRegistrationRouteFromLocation();
   if (registrationChampionshipId) {
-    return E(AppErrorBoundary, null, E(PublicRegistrationPage, { championshipId: registrationChampionshipId }));
+    return E(AppErrorBoundary, null, E(NotificationsHost), E(PublicRegistrationPage, { championshipId: registrationChampionshipId }));
   }
   return E(AppErrorBoundary, null,
+    E(NotificationsHost),
     E(AuthGate, { render: (auth) => {
       const token = sharedTokenFromLocation();
       if (token) return E(SharedChampionshipView, { token, auth });

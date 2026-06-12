@@ -1,3 +1,34 @@
+## v7.3.0 - Calidad, seguridad de roles y sincronización segura
+
+### Seguridad
+- El cliente ya NO envía la columna `role` al crear/actualizar perfiles en Supabase. El rol lo asigna y protege exclusivamente la base de datos.
+- Nueva migración `docs/supabase_migration_v7_3.sql`: trigger `protect_profile_role` que impide la autopromoción de rol, rol por defecto `USER`, y políticas RLS para `profiles`, `user_app_states` y `audit_logs`. **Debe ejecutarse en el SQL Editor de Supabase al desplegar esta versión.**
+
+### Sincronización
+- Detección de conflictos al guardar en Supabase: antes de sobrescribir `user_app_states` se compara el `updated_at` remoto con la última lectura conocida. Si otra sesión o dispositivo guardó después, NO se sobrescribe la nube y se muestra un aviso pidiendo recargar (antes el último en escribir pisaba silenciosamente los datos del otro).
+
+### Calidad y tooling
+- Suite de tests unitarios con Vitest para `lib/tournament.js` (50 tests): grupos, round robin, validaciones de partida, standings, clasificación, llaves y números mágicos. Ejecutar con `npm test`.
+- ESLint (flat config) + Prettier configurados; el script manual `check:syntax` fue reemplazado por `npm run lint`.
+- Nuevo script `npm run check` (lint + test + build) como verificación completa local.
+- CI con GitHub Actions (`.github/workflows/ci.yml`): lint, tests y build en cada push/PR a main.
+- Corregido escape innecesario en regex de `AiSheets.js` detectado por el linter.
+
+### UX
+- Nuevo sistema de notificaciones (`src/components/notify.js`): toasts no bloqueantes (`notify`) y confirmaciones asíncronas (`confirmAction`) que reemplazan `alert`/`confirm` nativos. Migrados los diálogos de App.js (feedback, Grupos F2, eliminar campeonato, compartir enlace); los módulos restantes migrarán gradualmente.
+
+### Mantenimiento
+- `vite` y `@vitejs/plugin-react` movidos a `devDependencies` (no son dependencias de runtime).
+- Claves de preferencias de interfaz (`UX_MODE_KEY`, `UI_THEME_KEY`) centralizadas en `src/data/defaults.js` junto a `STORAGE_KEY`.
+- Documento de especificación `.docx` movido a `docs/`.
+
+### Deuda técnica documentada (próximas versiones)
+- Normalizar el blob `user_app_states` en tablas reales con RLS por campeonato.
+- Migrar fotos de jugadores (data-URLs) a Supabase Storage.
+- Consolidar `styles.css` (1,881 `!important`, 45 bloques `@media print`).
+- Completar migración de `alert`/`confirm` en módulos restantes.
+- Migración gradual a JSX y tipado con JSDoc/TypeScript.
+
 ## v7.2.0
 
 - Responsive ProV aplicado solamente bajo `.app-shell.ux-mode-pro`, sin modificar las interfaces IA ni Clasica.

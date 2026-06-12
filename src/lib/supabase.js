@@ -32,6 +32,8 @@ export function safeProfileRole(profile, user) {
 export async function ensureUserProfile(user, metadata = {}) {
   if (!user?.id) return { profile: null, error: null };
   const email = String(user.email || '').toLowerCase();
+  // El rol NO se envía desde el cliente: lo asigna y protege la base de datos
+  // (ver docs/supabase_migration_v7_3.sql). Aquí solo se usa como fallback visual.
   const payload = {
     id: user.id,
     email,
@@ -40,20 +42,20 @@ export async function ensureUserProfile(user, metadata = {}) {
     phone_country_code: metadata.phone_country_code || user.user_metadata?.phone_country_code || '+506',
     phone_local: metadata.phone_local || user.user_metadata?.phone_local || '',
     avatar_url: metadata.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-    role: isAdminEmail(email) ? 'SUPER_USER' : 'USER',
     status: 'ACTIVE',
     updated_at: new Date().toISOString()
   };
+  const localFallback = () => ({ ...payload, role: safeProfileRole(null, user) });
   try {
     const { data, error } = await withTimeout(
       supabase.from('profiles').upsert(payload, { onConflict: 'id' }).select().single(),
       'Carga/creación de perfil'
     );
-    if (error) return { profile: { ...payload }, error };
-    return { profile: data || { ...payload }, error: null };
+    if (error) return { profile: localFallback(), error };
+    return { profile: data || localFallback(), error: null };
   } catch (error) {
     console.warn('No fue posible sincronizar el perfil en Supabase; se usará perfil local de sesión.', error);
-    return { profile: { ...payload }, error };
+    return { profile: localFallback(), error };
   }
 }
 
@@ -71,17 +73,35 @@ export async function loadUserAppState(userId) {
   }
 }
 
-export async function saveUserAppState(userId, state) {
-  if (!userId) return { error: null };
+export async function saveUserAppState(userId, state, expectedUpdatedAt = null) {
+  if (!userId) return { error: null, conflict: false, updatedAt: null };
   try {
+    // Antes de sobrescribir, verifica que nadie haya guardado desde otra
+    // sesión/dispositivo después de nuestra última lectura (last-write-wins
+    // silencioso era el comportamiento anterior y podía perder datos).
+    if (expectedUpdatedAt) {
+      const { data: current, error: readError } = await withTimeout(
+        supabase.from('user_app_states').select('updated_at').eq('owner_user_id', userId).maybeSingle(),
+        'Verificación de estado remoto'
+      );
+      if (!readError && current?.updated_at && current.updated_at !== expectedUpdatedAt) {
+        return {
+          error: new Error('Los datos en la nube cambiaron desde otra sesión o dispositivo.'),
+          conflict: true,
+          remoteUpdatedAt: current.updated_at,
+          updatedAt: null
+        };
+      }
+    }
+    const updatedAt = new Date().toISOString();
     const { error } = await withTimeout(
-      supabase.from('user_app_states').upsert({ owner_user_id: userId, state, updated_at: new Date().toISOString() }, { onConflict: 'owner_user_id' }),
+      supabase.from('user_app_states').upsert({ owner_user_id: userId, state, updated_at: updatedAt }, { onConflict: 'owner_user_id' }),
       'Guardado de estado de usuario'
     );
-    return { error };
+    return { error, conflict: false, updatedAt: error ? null : updatedAt };
   } catch (error) {
     console.warn('No fue posible guardar estado remoto; se conserva estado local.', error);
-    return { error };
+    return { error, conflict: false, updatedAt: null };
   }
 }
 

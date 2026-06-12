@@ -1,4 +1,8 @@
 export const STORAGE_KEY = 'fecobi-preprod-v3-4-pdf-header-table-layout';
+// Claves de preferencias de interfaz. Centralizadas aquí para que cualquier
+// migración futura de claves de localStorage se haga en un solo lugar.
+export const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
+export const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
 
 export const ASSOCIATIONS = ['AJOBI', 'ASOBIGRIE', 'ASOBICO', 'ASOBIUM', 'ASOPZS', 'INTERNACIONAL'];
 

@@ -4,7 +4,7 @@ CaromChamps es una plataforma web React/Vite para la gestión integral de campeo
 
 ## Estado actual
 
-- Versión declarada en `package.json`: `7.2.0`.
+- Versión declarada en `package.json`: `7.3.0`.
 - Rama de trabajo esperada: `main`.
 - Aplicación: SPA React 18 + Vite 5.
 - Publicación web: Cloudflare Pages, proyecto `caromchampsapp`.
@@ -13,14 +13,15 @@ CaromChamps es una plataforma web React/Vite para la gestión integral de campeo
 - Interface predeterminada: ProV.
 - Interfaces disponibles: ProV, IA y Clásica.
 
-## Cambios recientes v7.2.0
+## Cambios recientes v7.3.0
 
-- Responsive ProV aplicado solamente bajo `.app-shell.ux-mode-pro`.
-- Breakpoints para tablet y celular en navegación, topbar, dashboards, formularios, toolbars, tabs de campeonato y paneles operativos.
-- Tablas operativas convertidas a tarjetas móviles en ProV para Usuarios, Inscripciones, Campeonatos, pendientes, Jugadores, Calendario, Grupos y Ranking.
-- Calendario recibió clases específicas para permitir tarjetas móviles sin afectar IA ni Clásica.
-- README reconstruido con estado real, instalación, Supabase, Cloudflare Pages, verificación, módulos e historial consolidado.
-- Validado con `npm.cmd run check:syntax` y `npm.cmd run build`.
+- Seguridad: el cliente ya no asigna roles; la base de datos protege la columna `role` mediante trigger y RLS (ejecutar `docs/supabase_migration_v7_3.sql` en Supabase).
+- Sincronización con detección de conflictos: si otra sesión o dispositivo guardó después, no se sobrescribe la nube y se avisa al usuario.
+- Suite de 50 tests unitarios (Vitest) para el motor deportivo `lib/tournament.js`.
+- ESLint + Prettier configurados; `check:syntax` reemplazado por `npm run lint`.
+- CI con GitHub Actions: lint, tests y build en cada push/PR a `main`.
+- Notificaciones toast y confirmaciones asíncronas propias en lugar de `alert`/`confirm` nativos (App.js migrado; módulos restantes gradual).
+- Validado con `npm run check` (lint + test + build).
 
 ## Módulos principales
 
@@ -74,8 +75,7 @@ Comandos recomendados en Windows:
 ```powershell
 cd C:\Proyectos\CaromChamps
 npm.cmd install --registry=https://registry.npmjs.org/
-npm.cmd run check:syntax
-npm.cmd run build
+npm.cmd run check
 npm.cmd run dev
 ```
 
@@ -111,7 +111,10 @@ npm.cmd run dev:clean
 - `npm.cmd run dev:network`: servidor Vite accesible desde la red local.
 - `npm.cmd run build`: build de producción.
 - `npm.cmd run preview`: preview Vite en `127.0.0.1:4173`.
-- `npm.cmd run check:syntax`: validación sintáctica de los archivos JS principales.
+- `npm.cmd run lint`: análisis estático con ESLint (reemplaza al antiguo `check:syntax`).
+- `npm.cmd run test`: tests unitarios con Vitest (`test:watch` para modo interactivo).
+- `npm.cmd run check`: verificación completa (lint + tests + build).
+- `npm.cmd run format`: formateo con Prettier sobre `src/`.
 - `npm.cmd run start:local`: alias local de Vite.
 - `npm.cmd run start:preview`: alias de preview.
 - `npm.cmd run verify:registry`: muestra el registry npm activo.
@@ -267,8 +270,7 @@ public/_headers
 Antes de publicar:
 
 ```powershell
-npm.cmd run check:syntax
-npm.cmd run build
+npm.cmd run check
 ```
 
 Verificación manual mínima:
@@ -295,13 +297,24 @@ src/components/*                   Componentes compartidos
 src/modules/*                      Módulos operativos
 src/styles.css                     Estilos globales y capas por versión
 src/styles/theme.css               Tokens de tema
+src/lib/tournament.test.js         Tests unitarios del motor deportivo
 docs/supabase_schema_v5.sql        SQL vigente Supabase
+docs/supabase_migration_v7_3.sql   Migración de seguridad de roles y RLS (v7.3)
 docs/SUPABASE_SETUP_v5.md          Guía Supabase
+.github/workflows/ci.yml           CI: lint + tests + build
 public/_redirects                  Fallback SPA Cloudflare Pages
 public/_headers                    Headers de cache Cloudflare Pages
 ```
 
 ## Historial de versiones
+
+### v7.3.0
+
+- Roles protegidos en servidor (trigger + RLS, `docs/supabase_migration_v7_3.sql`); el cliente ya no envía `role`.
+- Detección de conflictos de sincronización en `user_app_states` (no más last-write-wins silencioso).
+- 50 tests unitarios Vitest para `lib/tournament.js`; ESLint + Prettier; CI GitHub Actions.
+- Toasts y confirmaciones propias (`src/components/notify.js`) reemplazando `alert`/`confirm` en App.js.
+- `vite`/`@vitejs/plugin-react` a devDependencies; claves de UI centralizadas en `defaults.js`.
 
 ### v7.2.0
 
