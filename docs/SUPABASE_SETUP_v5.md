@@ -22,13 +22,15 @@ http://localhost:5173/*
 
 ## 3. SQL
 
-Ejecutar el archivo en Supabase > SQL Editor:
+Ejecutar los archivos en Supabase > SQL Editor, en este orden:
 
 ```text
 docs/supabase_schema_v5.sql
+docs/supabase_migration_v7_3.sql
+docs/supabase_migration_v7_4.sql
 ```
 
-El script es idempotente y tambien migra proyectos instalados con roles antiguos.
+Los scripts son idempotentes y tambien migran proyectos instalados con versiones anteriores. La migracion v7_3 protege la asignacion de roles en el servidor; la v7_4 saca la PII (cedula, correo, telefono) del payload publico de inscripciones y crea la RPC `match_public_registration_player`.
 
 ## 4. Usuario Super usuario
 

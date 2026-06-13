@@ -141,18 +141,24 @@ export async function auditCloudEvent(userId, type, detail) {
     console.warn('No fue posible registrar auditoría remota.', error);
   }
 }
-export async function upsertPublicRegistrationPublication({ userId, championshipId, payload, isActive = true }) {
+export async function upsertPublicRegistrationPublication({ userId, championshipId, payload, privatePayload, isActive = true }) {
   if (!championshipId) return { data: null, error: new Error('Campeonato sin identificador para publicar inscripcion.') };
   try {
+    // `payload` es legible por cualquiera con la anon key (página pública):
+    // no debe contener cédulas, correos ni teléfonos. La PII viaja en
+    // `private_payload`, columna sin SELECT para anon/authenticated; por eso
+    // el .select() de retorno pide columnas explícitas (un '*' fallaría con
+    // "permission denied"). Ver docs/supabase_migration_v7_4.sql.
     const { data, error } = await withTimeout(
       supabase.from('public_registration_publications').upsert({
         championship_id: championshipId,
         owner_user_id: userId || null,
         payload,
+        private_payload: privatePayload || {},
         is_active: isActive,
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }, { onConflict: 'championship_id' }).select().single(),
+      }, { onConflict: 'championship_id' }).select('championship_id, is_active, updated_at').single(),
       'Publicacion de inscripcion',
       8000
     );
@@ -175,6 +181,25 @@ export async function getPublicRegistrationPublication(championshipId) {
   } catch (error) {
     console.warn('No fue posible leer publicacion de inscripcion desde Supabase.', error);
     return { data: null, error };
+  }
+}
+
+export async function matchPublicRegistrationPlayer(championshipId, { idNumber = '', email = '' } = {}) {
+  if (!championshipId || (!String(idNumber || '').trim() && !String(email || '').trim())) return { player: null, error: null };
+  try {
+    const { data, error } = await withTimeout(
+      supabase.rpc('match_public_registration_player', {
+        p_championship_id: championshipId,
+        p_id_number: String(idNumber || ''),
+        p_email: String(email || '')
+      }),
+      'Reconocimiento de jugador',
+      8000
+    );
+    return { player: data || null, error };
+  } catch (error) {
+    console.warn('No fue posible verificar el jugador en Supabase.', error);
+    return { player: null, error };
   }
 }
 

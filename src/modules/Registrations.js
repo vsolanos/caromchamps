@@ -3,7 +3,7 @@ import { E, Card, Button, Badge, SectionTitle, EmptyState, Field, Input, Select,
 import { COUNTRIES, countryByIso, normalizePhone, validatePhoneByCountry } from '../lib/countries.js';
 import { formatDateTimeEs, playerName, uid } from '../lib/tournament.js';
 import { STORAGE_KEY } from '../data/defaults.js';
-import { getPublicRegistrationPublication, listPublicRegistrationRequests, submitPublicRegistrationRequest, updatePublicRegistrationRequest, upsertPublicRegistrationPublication } from '../lib/supabase.js';
+import { getPublicRegistrationPublication, listPublicRegistrationRequests, matchPublicRegistrationPlayer, submitPublicRegistrationRequest, updatePublicRegistrationRequest, upsertPublicRegistrationPublication } from '../lib/supabase.js';
 
 export const PUBLIC_REGISTRATION_KEY = 'caromchamps::public_championship_registrations::v7_1';
 export const PUBLIC_SUBMISSIONS_KEY = 'caromchamps::public_registration_submissions::v7_1';
@@ -60,21 +60,36 @@ export function publicRegistrationRouteFromLocation() {
 function publishedRegistry() { return readJson(PUBLIC_REGISTRATION_KEY, {}); }
 function submissionRegistry() { return readJson(PUBLIC_SUBMISSIONS_KEY, []); }
 
+// El payload público es legible por cualquiera con la anon key: no debe
+// incluir cédula, correo ni teléfono. Solo datos que ya son públicos en
+// resultados/rankings, suficientes para reconocer por nombre y mostrar el
+// resumen del jugador. La PII completa viaja en private_payload (columna
+// sin SELECT para anon) y se consulta vía RPC match_public_registration_player.
 function compactPublicPlayer(player) {
   return {
     player_id: player.player_id,
     first_name: player.first_name,
     last_name: player.last_name,
-    id_type: player.id_type,
-    id_number: player.id_number,
     country_iso: player.country_iso,
     association_code: player.association_code,
     division_level: player.division_level,
     current_average: player.current_average,
-    email: player.email,
-    phone_e164: player.phone_e164,
     status: player.status
   };
+}
+
+function compactPrivatePlayer(player) {
+  return {
+    ...compactPublicPlayer(player),
+    id_type: player.id_type,
+    id_number: player.id_number,
+    email: player.email,
+    phone_e164: player.phone_e164
+  };
+}
+
+function activePlayers(players = []) {
+  return (players || []).filter((player) => !player.status || player.status === 'ACTIVO');
 }
 
 function compactPublicChampionship(championship = {}) {
@@ -95,8 +110,12 @@ function compactPublicChampionship(championship = {}) {
 function buildPublicRegistrationPayload(championship, players = []) {
   return {
     championship: compactPublicChampionship(championship),
-    players: (players || []).filter((player) => !player.status || player.status === 'ACTIVO').map(compactPublicPlayer)
+    players: activePlayers(players).map(compactPublicPlayer)
   };
+}
+
+function buildPrivateRegistrationPayload(players = []) {
+  return { players: activePlayers(players).map(compactPrivatePlayer) };
 }
 
 function findPublishedPayloadInAppState(championshipId) {
@@ -162,10 +181,23 @@ function RegistrationForm({ payload, onSubmitted }) {
   const [form, setForm] = useState(emptyRegistrationForm());
   const [lookupDone, setLookupDone] = useState(false);
   const [message, setMessage] = useState('');
+  const [remoteMatch, setRemoteMatch] = useState(null);
   const selectedCountry = countryByIso(form.country_iso);
   const phoneValidation = validatePhoneByCountry(form.country_iso, form.phone_local);
-  const existing = useMemo(() => findExistingPlayer(payload?.players || [], form), [payload, form]);
-  const patch = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  // El payload público ya no trae cédula ni correo, así que el matching local
+  // solo reconoce por nombre; cédula y correo se verifican contra la RPC.
+  const localMatch = useMemo(() => findExistingPlayer(payload?.players || [], form), [payload, form]);
+  const existing = remoteMatch || localMatch;
+  const patch = (key, value) => {
+    if (key === 'id_number' || key === 'email') setRemoteMatch(null);
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+  const lookupExisting = async () => {
+    setLookupDone(true);
+    if (!form.id_number.trim() && !form.email.trim()) return;
+    const { player } = await matchPublicRegistrationPlayer(payload?.championship?.championship_id, { idNumber: form.id_number, email: form.email });
+    setRemoteMatch(player);
+  };
   const submit = async () => {
     setMessage('');
     if (!form.first_name.trim() || !form.last_name.trim()) return setMessage('Digite nombre y apellidos.');
@@ -174,12 +206,21 @@ function RegistrationForm({ payload, onSubmitted }) {
     if (!phoneValidation.valid) return setMessage(phoneValidation.message);
     if (!form.accepts_terms) return setMessage('Debe aceptar el uso de sus datos para la inscripción del campeonato.');
     const duplicate = submissionRegistry().some((item) => item.championship_id === payload.championship.championship_id && normalizedId(item.id_number) === normalizedId(form.id_number));
+    // Verificación autoritativa antes de enviar: si el usuario no salió del
+    // campo (sin blur) o la consulta previa aún no respondió, se consulta la
+    // RPC aquí. Si Supabase no responde, se envía como RECIBIDA y la
+    // organización re-verifica contra su base local al aprobar.
+    let matched = remoteMatch || localMatch;
+    if (!remoteMatch && (form.id_number.trim() || form.email.trim())) {
+      const { player } = await matchPublicRegistrationPlayer(payload.championship.championship_id, { idNumber: form.id_number, email: form.email });
+      if (player) matched = player;
+    }
     const request = {
       registration_id: uid('REG'),
       championship_id: payload.championship.championship_id,
       championship_name: payload.championship.name,
-      player_id: existing?.player_id || '',
-      existing_player: !!existing,
+      player_id: matched?.player_id || '',
+      existing_player: !!matched,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
       id_type: form.id_type,
@@ -187,11 +228,11 @@ function RegistrationForm({ payload, onSubmitted }) {
       country_iso: form.country_iso,
       association_code: form.country_iso === 'CR' ? form.association_code : 'INTERNACIONAL',
       division_level: form.country_iso === 'CR' ? form.division_level : 'NA',
-      current_average: Number(form.current_average || existing?.current_average || 0),
+      current_average: Number(form.current_average || matched?.current_average || 0),
       email: form.email.trim().toLowerCase(),
       phone_e164: phoneValidation.e164,
       notes: form.notes || '',
-      status: duplicate ? 'DUPLICADA' : existing ? 'VALIDADA' : 'RECIBIDA',
+      status: duplicate ? 'DUPLICADA' : matched ? 'VALIDADA' : 'RECIBIDA',
       source: 'PUBLIC_REGISTRATION_PAGE',
       submitted_at: formatDateTimeEs(new Date())
     };
@@ -201,12 +242,14 @@ function RegistrationForm({ payload, onSubmitted }) {
     if (remote.error) {
       setMessage('Inscripcion guardada localmente. No fue posible sincronizar con Supabase en este momento.');
       setLookupDone(false);
+      setRemoteMatch(null);
       setForm(emptyRegistrationForm());
       onSubmitted?.(request);
       return;
     }
     setMessage(duplicate ? 'Ya existe una inscripción enviada con esta identificación. Quedó marcada como duplicada para revisión.' : 'Inscripción enviada correctamente. La organización revisará la información.');
     setLookupDone(false);
+    setRemoteMatch(null);
     setForm(emptyRegistrationForm());
     onSubmitted?.(request);
   };
@@ -214,14 +257,14 @@ function RegistrationForm({ payload, onSubmitted }) {
     E(SectionTitle, { title: 'Formulario de inscripción', subtitle: 'Complete sus datos. Si ya existe como jugador activo, la plataforma lo reconocerá automáticamente.' }),
     E('div', { className: 'grid grid-4', style: { marginTop: 14 } },
       E(Field, { label: 'Tipo identificación' }, E(Select, { value: form.id_type, onChange: (event) => patch('id_type', event.target.value) }, ['CEDULA', 'PASAPORTE', 'OTHER'].map((value) => E('option', { key: value, value }, value)))),
-      E(Field, { label: 'Número identificación' }, E(Input, { value: form.id_number, onChange: (event) => patch('id_number', event.target.value), onBlur: () => setLookupDone(true), placeholder: 'Cédula / pasaporte' })),
+      E(Field, { label: 'Número identificación' }, E(Input, { value: form.id_number, onChange: (event) => patch('id_number', event.target.value), onBlur: lookupExisting, placeholder: 'Cédula / pasaporte' })),
       E(Field, { label: 'Nombre' }, E(Input, { value: form.first_name, onChange: (event) => patch('first_name', event.target.value), placeholder: 'Nombre' })),
       E(Field, { label: 'Apellidos' }, E(Input, { value: form.last_name, onChange: (event) => patch('last_name', event.target.value), placeholder: 'Apellidos' })),
       E(Field, { label: 'País' }, E(Select, { value: form.country_iso, onChange: (event) => patch('country_iso', event.target.value) }, COUNTRIES.map((country) => E('option', { key: country.iso, value: country.iso }, country.name)))),
       form.country_iso === 'CR' ? E(Field, { label: 'Asociación' }, E(Select, { value: form.association_code, onChange: (event) => patch('association_code', event.target.value) }, ASSOCIATIONS.filter((item) => item !== 'INTERNACIONAL').map((value) => E('option', { key: value, value }, value)))) : E(Field, { label: 'Asociación' }, E(Input, { value: 'INTERNACIONAL', disabled: true })),
       E(Field, { label: 'División' }, E(Select, { value: form.division_level, onChange: (event) => patch('division_level', event.target.value), disabled: form.country_iso !== 'CR' }, ['PRIMERA', 'SEGUNDA', 'TERCERA', 'SELECTIVO', 'INTERNACIONAL', 'NA'].map((value) => E('option', { key: value, value }, value)))),
       E(Field, { label: 'Promedio actual' }, E(Input, { type: 'number', step: '0.001', min: '0', value: form.current_average, onChange: (event) => patch('current_average', event.target.value) })),
-      E(Field, { label: 'Correo' }, E(Input, { type: 'email', value: form.email, onChange: (event) => patch('email', event.target.value), placeholder: 'correo@dominio.com' })),
+      E(Field, { label: 'Correo' }, E(Input, { type: 'email', value: form.email, onChange: (event) => patch('email', event.target.value), onBlur: lookupExisting, placeholder: 'correo@dominio.com' })),
       E(Field, { label: `Teléfono ${selectedCountry.dial}`, hint: selectedCountry.hint }, E(Input, { value: form.phone_local, onChange: (event) => patch('phone_local', normalizePhone(event.target.value)), placeholder: selectedCountry.hint })),
       E(Field, { label: 'Observaciones' }, E(Input, { value: form.notes, onChange: (event) => patch('notes', event.target.value), placeholder: 'Comentarios para la organización' })),
       E(Field, { label: 'Consentimiento' }, E('label', { className: 'inline-check' }, E('input', { type: 'checkbox', checked: form.accepts_terms, onChange: (event) => patch('accepts_terms', event.target.checked) }), ' Acepto uso de datos para esta inscripción'))
@@ -309,7 +352,7 @@ export function RegistrationModule({ championship, setChampionship, players, set
       const publicationChampionship = { ...championship, registration_enabled: true, registration_published_at: publishedAt };
       const url = publishChampionshipRegistration({ championship: publicationChampionship, players });
       const payload = buildPublicRegistrationPayload(publicationChampionship, players);
-      const remote = await upsertPublicRegistrationPublication({ userId: auth?.user?.id, championshipId: championship.championship_id, payload, isActive: true });
+      const remote = await upsertPublicRegistrationPublication({ userId: auth?.user?.id, championshipId: championship.championship_id, payload, privatePayload: buildPrivateRegistrationPayload(players), isActive: true });
       setChampionship((prev) => ({ ...prev, registration_enabled: true, registration_url: url, registration_published_at: publishedAt }));
       setPublicationStatus(true);
       setPublishedUrl(url);
@@ -324,7 +367,7 @@ export function RegistrationModule({ championship, setChampionship, players, set
   };
   const unpublish = () => {
     unpublishChampionshipRegistration(championship.championship_id);
-    upsertPublicRegistrationPublication({ userId: auth?.user?.id, championshipId: championship.championship_id, payload: buildPublicRegistrationPayload(championship, players), isActive: false });
+    upsertPublicRegistrationPublication({ userId: auth?.user?.id, championshipId: championship.championship_id, payload: buildPublicRegistrationPayload(championship, players), privatePayload: buildPrivateRegistrationPayload(players), isActive: false });
     setChampionship((prev) => ({ ...prev, registration_enabled: false, registration_url: '', registration_published_at: '' }));
     setPublicationStatus(false);
     setPublishedUrl('');

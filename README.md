@@ -174,7 +174,8 @@ La publicación e inscripción pueden funcionar con Supabase cuando está config
 
 - publicación y despublicación del campeonato.
 - payload compacto de publicación para reducir riesgo de cuota local.
-- identificación de jugadores existentes por documento, correo o nombre.
+- payload público SIN PII: el payload legible con la anon key solo contiene nombre, `player_id` y datos deportivos; cédulas, correos y teléfonos viven en la columna `private_payload` (sin SELECT para anon) y el reconocimiento por documento o correo se hace mediante la RPC `match_public_registration_player` (security definer). Ver `docs/supabase_migration_v7_4.sql`.
+- identificación de jugadores existentes por documento, correo (vía RPC) o nombre (local).
 - solicitudes nuevas con datos requeridos.
 - estados `RECIBIDA`, `VALIDADA`, `APROBADA`, `RECHAZADA`, `DUPLICADA` y `EN_REVISION`.
 - sincronización de aprobados con el maestro de jugadores y participantes del campeonato.

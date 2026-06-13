@@ -1,3 +1,11 @@
+## v7.4.0 - PII fuera del payload público de inscripciones
+
+### Seguridad
+- El payload público de inscripciones (`public_registration_publications.payload`, legible con la anon key para la página `#register=<championship_id>`) ya NO contiene PII: se eliminaron `id_number` (cédula), `id_type`, `email` y `phone_e164` de la lista de jugadores publicada. Solo viajan nombre, `player_id` y datos deportivos que ya son públicos en resultados.
+- La PII completa se guarda en la nueva columna `private_payload`, sin privilegio de SELECT para `anon`/`authenticated` (revocación a nivel de columna).
+- El reconocimiento de jugadores existentes por cédula o correo en la página pública ahora se hace con la RPC `match_public_registration_player` (security definer): recibe el dato digitado y devuelve solo el resumen no sensible del jugador coincidente o `null`. El reconocimiento por nombre sigue siendo local (los nombres permanecen en el payload público). Se descartó publicar hashes SHA-256 de cédulas porque con ~9 dígitos se revientan offline en segundos.
+- Nueva migración `docs/supabase_migration_v7_4.sql`: crea la columna y la RPC, ajusta los privilegios y sanea las publicaciones existentes (mueve la PII a `private_payload` y la elimina del payload público). **Debe ejecutarse en el SQL Editor de Supabase al desplegar esta versión; los clientes anteriores a v7.4 vuelven a publicar PII, ver nota operativa al final del script.**
+
 ## v7.3.0 - Calidad, seguridad de roles y sincronización segura
 
 ### Seguridad
