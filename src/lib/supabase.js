@@ -76,17 +76,32 @@ export async function loadUserAppState(userId) {
 export async function saveUserAppState(userId, state, expectedUpdatedAt = null) {
   if (!userId) return { error: null, conflict: false, updatedAt: null };
   try {
-    // Antes de sobrescribir, verifica que nadie haya guardado desde otra
-    // sesión/dispositivo después de nuestra última lectura (last-write-wins
-    // silencioso era el comportamiento anterior y podía perder datos).
-    if (expectedUpdatedAt) {
-      const { data: current, error: readError } = await withTimeout(
-        supabase.from('user_app_states').select('updated_at').eq('owner_user_id', userId).maybeSingle(),
-        'Verificación de estado remoto'
-      );
-      if (!readError && current?.updated_at && current.updated_at !== expectedUpdatedAt) {
+    // Antes de sobrescribir, lee la versión actual de la nube. Esto da dos
+    // protecciones contra pérdida de datos:
+    //  1) Conflicto entre sesiones: si la nube cambió desde nuestra última
+    //     lectura (expectedUpdatedAt), no sobrescribimos.
+    //  2) Sobrescritura ciega: si NO cargamos la nube en esta sesión
+    //     (expectedUpdatedAt nulo) pero YA existe una fila, tampoco la pisamos.
+    //     Sin esta guarda, una sesión con estado local por defecto (p. ej. tras
+    //     un error de lectura de la nube) destruía la copia buena remota.
+    //     Solo se permite escritura "a ciegas" cuando no existe fila previa
+    //     (primera copia del usuario).
+    const { data: current, error: readError } = await withTimeout(
+      supabase.from('user_app_states').select('updated_at').eq('owner_user_id', userId).maybeSingle(),
+      'Verificación de estado remoto'
+    );
+    if (!readError && current?.updated_at) {
+      if (expectedUpdatedAt && current.updated_at !== expectedUpdatedAt) {
         return {
           error: new Error('Los datos en la nube cambiaron desde otra sesión o dispositivo.'),
+          conflict: true,
+          remoteUpdatedAt: current.updated_at,
+          updatedAt: null
+        };
+      }
+      if (!expectedUpdatedAt) {
+        return {
+          error: new Error('La copia en la nube no se cargó en esta sesión; no se sobrescribe para evitar pérdida de datos. Recargue la página.'),
           conflict: true,
           remoteUpdatedAt: current.updated_at,
           updatedAt: null

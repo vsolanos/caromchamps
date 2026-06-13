@@ -1,3 +1,17 @@
+## v7.5.0 - Tema CaromChamps, selector de interfaz y fix de sincronización
+
+### Identidad visual
+- Nuevo tema de marca **CaromChamps "Precision Blue"** como skin opcional (eje independiente del modo claro/oscuro y de la interfaz). `Estándar` sigue siendo el predeterminado, así que nadie ve cambios hasta elegirlo. Incluye paleta clara y oscura, tipografía Montserrat (títulos) / Inter (interfaz) y estilo gráfico (header con degradado, tarjetas redondeadas, acentos azul/amarillo/rojo). Todo aislado bajo `.skin-caromchamps` en `src/styles/skin-caromchamps.css`.
+- Logo oficial CaromChamps integrado: lockup completo (`caromchamps-logo.png`) en la barra lateral del tema y en la pantalla de login, e isotipo (`caromchamps-isotipo.png`, la "C" + las tres bolas) en el TopBar y el hero del Grand Dashboard.
+- Selector **"Tema visual de la plataforma"** en Configuración (Estándar / CaromChamps), preferencia por dispositivo.
+
+### Interfaz
+- La selección de interfaz (ProV / IA / Clásica) se movió a un **combo box en Configuración**; ProV es la predeterminada. Se quitaron los botones de cambio de interfaz inline de los headers IA/Clásica.
+- Los pills de selección de interfaz que aparecían en el TopBar y el hero se reemplazaron por el isotipo de marca, alineado.
+
+### Seguridad de datos
+- `saveUserAppState` (`src/lib/supabase.js`) ya **no sobrescribe a ciegas** la copia remota de `user_app_states` cuando no se cargó primero en la sesión: si existe una fila y `expectedUpdatedAt` es nulo (p. ej. tras un error de lectura de la nube con estado local por defecto), devuelve conflicto en vez de pisar la copia buena. Corrige la causa raíz de una pérdida de datos donde el estado por defecto reemplazaba los campeonatos del usuario en la nube.
+
 ## v7.4.0 - PII fuera del payload público de inscripciones
 
 ### Seguridad

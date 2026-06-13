@@ -2,8 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { E, Button, Card, Field, Input, Select, Badge } from './ui.js';
 import { COUNTRIES, countryByIso, normalizePhone, validatePhoneByCountry } from '../lib/countries.js';
 import { auditCloudEvent, ensureUserProfile, isAdminEmail, supabase } from '../lib/supabase.js';
+import { UI_SKIN_KEY } from '../data/defaults.js';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
+// El login se renderiza antes del app-shell, así que lee la preferencia de
+// skin directamente de localStorage para aplicar la identidad de marca también
+// en la pantalla de acceso.
+function skinClass() {
+  try {
+    return localStorage.getItem(UI_SKIN_KEY) === 'caromchamps' ? 'skin-caromchamps' : 'skin-standard';
+  } catch { return 'skin-standard'; }
+}
 
 
 function withLocalTimeout(promise, ms = 6000, label = 'Operación') {
@@ -37,9 +47,15 @@ async function uploadAvatar(userId, file) {
 }
 
 function LandingHeader() {
+  // Bajo el skin CaromChamps, el logo oficial (sobre tarjeta blanca para que
+  // resalte sobre el héroe azul) reemplaza al badge "C" y al wordmark de texto,
+  // que el logo ya incluye.
+  const isCarom = skinClass() === 'skin-caromchamps';
   return E('div', { className: 'auth-hero-copy' },
-    E('div', { className: 'auth-logo-mark premium' }, 'C'),
-    E('h1', null, 'CAROM', E('br'), 'CHAMPS'),
+    isCarom
+      ? E('div', { className: 'auth-brand-logo-card' }, E('img', { src: '/assets/caromchamps-logo.png', alt: 'CaromChamps' }))
+      : E('div', { className: 'auth-logo-mark premium' }, 'C'),
+    isCarom ? null : E('h1', null, 'CAROM', E('br'), 'CHAMPS'),
     E('p', null, '3-Cushion Billiards Management Platform'),
     E('div', { className: 'auth-feature-list' },
       [['🏆', 'Torneos'], ['👥', 'Jugadores'], ['📅', 'Calendarios'], ['📊', 'Resultados'], ['🛡️', 'Rankings'], ['💬', 'Comunidad']].map(([icon, label]) => E('div', { className: 'auth-feature-item', key: label }, E('span', null, icon), E('b', null, label)))
@@ -171,7 +187,7 @@ export function AuthGate({ render }) {
     await supabase.auth.signOut();
   };
 
-  if (loading) return E('div', { className: 'auth-page' }, E(Card, { className: 'auth-card' }, E('h2', null, 'Cargando CaromChamps...')));
+  if (loading) return E('div', { className: `auth-page ${skinClass()}` }, E(Card, { className: 'auth-card' }, E('h2', null, 'Cargando CaromChamps...')));
 
   if (session?.user) {
     const effectiveProfile = profile || { email: session.user.email, full_name: session.user.email, role: isAdminEmail(session.user.email) ? 'SUPER_USER' : 'USER', status: 'ACTIVE' };
@@ -181,7 +197,7 @@ export function AuthGate({ render }) {
   const formTitle = mode === 'signup' ? 'Crear cuenta' : 'Welcome Back';
   const formSubtitle = mode === 'signup' ? 'Registre su perfil para usar CaromChamps' : 'Access the CaromChamps platform';
 
-  return E('div', { className: 'auth-page auth-page-premium' },
+  return E('div', { className: `auth-page auth-page-premium ${skinClass()}` },
     E('section', { className: 'auth-shell-premium' },
       E('div', { className: 'auth-left-panel' },
         E('img', { className: 'auth-left-image', src: '/assets/auth-hero-caromchamps.png', alt: 'CaromChamps billiards access' }),

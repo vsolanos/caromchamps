@@ -3,6 +3,10 @@ export const STORAGE_KEY = 'fecobi-preprod-v3-4-pdf-header-table-layout';
 // migración futura de claves de localStorage se haga en un solo lugar.
 export const UX_MODE_KEY = 'caromchamps::ux_mode::v6_0';
 export const UI_THEME_KEY = 'caromchamps::ui_theme::v6_2';
+// Skin de marca (eje independiente de claro/oscuro y del modo de interfaz).
+// 'standard' = identidad institucional actual; 'caromchamps' = identidad
+// "Precision Blue". Preferencia global del dispositivo (localStorage).
+export const UI_SKIN_KEY = 'caromchamps::ui_skin::v7_4';
 
 export const ASSOCIATIONS = ['AJOBI', 'ASOBIGRIE', 'ASOBICO', 'ASOBIUM', 'ASOPZS', 'INTERNACIONAL'];
 

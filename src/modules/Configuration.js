@@ -12,7 +12,7 @@ function setting(championship, key, fallback) {
   return championship.global_settings?.[key] ?? fallback;
 }
 
-export function ConfigurationModule({ championship, setChampionship }) {
+export function ConfigurationModule({ championship, setChampionship, uiSkin = 'standard', setUiSkin, uxMode = 'pro', setUxMode }) {
   const settings = {
     avg_threshold_1ra: setting(championship, 'avg_threshold_1ra', 0.800),
     avg_threshold_2da: setting(championship, 'avg_threshold_2da', 0.450),
@@ -62,7 +62,38 @@ export function ConfigurationModule({ championship, setChampionship }) {
     }
   });
 
+  const SKIN_OPTIONS = [
+    ['standard', 'Estándar', 'Identidad institucional actual (predeterminada).'],
+    ['caromchamps', 'CaromChamps', 'Identidad "Precision Blue": azul mesa, bolas de carambola y tipografía Montserrat/Inter.']
+  ];
+  const INTERFACE_OPTIONS = [
+    ['pro', 'ProV', 'Navegación por tabs (predeterminada).'],
+    ['guided', 'IA', 'Experiencia guiada paso a paso.'],
+    ['classic', 'Clásica', 'Interfaz base de versiones anteriores.']
+  ];
+  const activeSkin = SKIN_OPTIONS.find(([value]) => value === uiSkin) || SKIN_OPTIONS[0];
+  const activeInterface = INTERFACE_OPTIONS.find(([value]) => value === uxMode) || INTERFACE_OPTIONS[0];
+
   return E('div', { className: 'grid' },
+    E(Card, { className: 'config-skin-card' },
+      E(SectionTitle, { title: 'Tema e interfaz de la plataforma', subtitle: 'Preferencias de este dispositivo: identidad de marca e interfaz de trabajo. El modo claro/oscuro se configura aparte, más abajo.' }),
+      E('div', { className: 'grid grid-3', style: { marginTop: 14 } },
+        E(Field, { label: 'Identidad de marca', hint: activeSkin[2] },
+          E(Select, { value: uiSkin, onChange: (e) => setUiSkin?.(e.target.value) },
+            SKIN_OPTIONS.map(([value, label]) => E('option', { key: value, value }, label))
+          )
+        ),
+        E(Field, { label: 'Interfaz de trabajo', hint: activeInterface[2] },
+          E(Select, { value: uxMode, onChange: (e) => setUxMode?.(e.target.value) },
+            INTERFACE_OPTIONS.map(([value, label]) => E('option', { key: value, value }, label))
+          )
+        ),
+        E('div', { className: 'round-card config-summary-card' },
+          E('b', null, 'Activo'),
+          E('p', { className: 'small' }, `${activeSkin[1]} · Interfaz ${activeInterface[1]}`)
+        )
+      )
+    ),
     E(Card, null,
       E(SectionTitle, { title: 'Configuración general', subtitle: 'Parámetros que afectan reglas globales, cierre administrativo, reclasificación y reportes de la aplicación.' }),
       E('div', { className: 'grid grid-3', style: { marginTop: 14 } },

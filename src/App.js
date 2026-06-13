@@ -7,7 +7,7 @@ import { AuthGate } from './components/AuthGate.js';
 import { SharedChampionshipView } from './components/SharedView.js';
 import { ProfileSettings } from './components/ProfileSettings.js';
 import { createChampionshipShare, loadUserAppState, saveUserAppState } from './lib/supabase.js';
-import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY, UX_MODE_KEY, UI_THEME_KEY } from './data/defaults.js';
+import { DEFAULT_CHAMPIONSHIP, DEFAULT_PLAYERS, STORAGE_KEY, UX_MODE_KEY, UI_THEME_KEY, UI_SKIN_KEY } from './data/defaults.js';
 import { autoFillMatches, clearResults, generateFullKnockoutDemo, generateGroups, generateRoundRobinMatches, groupStandings, qualify, scheduleMatches, uid, getEligiblePlayers, makeChampionshipSnapshot, formatDateTimeEs, formatDateEs, usesAverageControl, matchCode, matchDetailedScore, matchDisplayStatus, matchPlayerStats, matchRoundLabel, playerName, roundDisplayName, fmtAvg, calculateTotalQualifiers, num } from './lib/tournament.js';
 import { ChampionshipsModule } from './modules/Championships.js';
 import { PlayersModule } from './modules/Players.js';
@@ -119,19 +119,17 @@ function visibleTabsForChampionship(championship) {
   return NAV_TABS;
 }
 
-function ModeButtons({ uxMode, setUxMode, compact = false }) {
-  const modes = [
-    ['pro', 'Interface ProV', 'Nueva navegación por tabs'],
-    ['guided', 'Interface IA', 'UX guiada v5.9'],
-    ['classic', 'Interface Clásica', 'Base v5.8 y anteriores']
-  ];
-  return E('div', { className: `mode-switcher ${compact ? 'compact' : ''}` }, modes.map(([id, label, hint]) => E('button', {
-    key: id,
-    type: 'button',
-    className: `mode-switch ${uxMode === id ? 'active' : ''}`,
-    onClick: () => setUxMode(id),
-    title: hint
-  }, E('span', null, compact ? label.replace('Interface ', '') : label), compact ? null : E('small', null, hint))));
+// El selector de interfaz inline (ProV/IA/Clásica) se movió a Configuración.
+// En su lugar se muestra el logo de marca sobre un chip blanco, alineado y
+// nítido sobre cualquier fondo (claro/oscuro). `height` controla el tamaño
+// según la zona (TopBar compacto vs. hero del Grand Dashboard).
+function PlatformLogo({ height = 34 }) {
+  return E('img', {
+    className: 'platform-brand-logo',
+    src: '/assets/caromchamps-isotipo.png',
+    alt: 'CaromChamps',
+    style: { height, width: 'auto', background: '#fff', borderRadius: 10, padding: '4px 8px', boxShadow: '0 3px 12px rgba(5,8,25,0.18)' }
+  });
 }
 
 function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
@@ -184,7 +182,15 @@ function FeedbackButton({ championship, tab, uxMode, onSubmit }) {
   );
 }
 
-function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, setUxMode, userRole }) {
+// Logo oficial de marca CaromChamps (lockup: "C" + tres bolas + wordmark).
+// Se rinde siempre en el header; el CSS lo muestra solo bajo el skin
+// .skin-caromchamps, reemplazando al logo institucional JPG y al wordmark
+// de texto (que el logo ya incluye).
+function BrandLogo() {
+  return E('img', { className: 'cc-brand-logo', src: '/assets/caromchamps-logo.png', alt: 'CaromChamps' });
+}
+
+function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMode, userRole }) {
   const isRankingChampionship = (championship?.championship_type || 'NORMAL') === 'RANKING';
   const effectiveRole = normalizePlatformRole(userRole || auth?.profile?.role || 'USER');
   const tabs = filterTabsByRole(visibleTabsForChampionship(championship), effectiveRole);
@@ -198,6 +204,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
     const primaryTabs = filterTabsByRole(PRO_PRIMARY_TABS, effectiveRole);
     return E('header', { className: `header guided-header pro-header ${collapsed ? 'collapsed' : ''}` },
       E('div', { className: 'brand-block guided-brand pro-brand' },
+        E(BrandLogo),
         E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
         E('div', { className: 'brand-copy' },
           E('div', { className: 'brand-title' }, 'CaromChamps'),
@@ -228,6 +235,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
   if (isGuided) {
     return E('header', { className: `header guided-header ${collapsed ? 'collapsed' : ''}` },
       E('div', { className: 'brand-block guided-brand' },
+        E(BrandLogo),
         E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
         E('div', { className: 'brand-copy' },
           E('div', { className: 'brand-title' }, 'CaromChamps'),
@@ -236,9 +244,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
         )
       ),
       E('div', { className: 'menu-toolbar' },
-        E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer'),
-        E(Button, { onClick: () => setUxMode('pro'), kind: 'primary', title: 'Usar Interface ProV' }, collapsed ? '◈' : 'Interface ProV'),
-        E(Button, { onClick: () => setUxMode('classic'), kind: 'soft', title: 'Volver temporalmente a la interface clásica' }, collapsed ? '↩' : 'Interface Clásica')
+        E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer')
       ),
       E('nav', { className: 'tabs guided-tabs', 'aria-label': 'Navegación por flujo de trabajo' },
         GUIDED_NAV_GROUPS.map((group) => {
@@ -263,6 +269,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
 
   return E('header', { className: `header ${collapsed ? 'collapsed' : ''}` },
     E('div', { className: 'brand-block' },
+      E(BrandLogo),
       E('img', { className: 'brand-logo-main', src: '/assets/asobigrie-logo.jpg', alt: 'ASOBIGRIE' }),
       E('div', { className: 'brand-copy' },
         E('div', { className: 'brand-title' }, 'CaromChamps'),
@@ -271,9 +278,7 @@ function Header({ championship, tab, setTab, collapsed, setCollapsed, auth, uxMo
       )
     ),
     E('div', { className: 'menu-toolbar' },
-      E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer'),
-      E(Button, { onClick: () => setUxMode('pro'), kind: 'primary', title: 'Usar Interface ProV' }, collapsed ? '◈' : 'Interface ProV'),
-      E(Button, { onClick: () => setUxMode('guided'), kind: 'soft', title: 'Usar Interface IA' }, collapsed ? '✨' : 'Interface IA')
+      E(Button, { onClick: () => setCollapsed(!collapsed), kind: 'soft', title: collapsed ? 'Expandir menú' : 'Contraer menú' }, collapsed ? '☰' : '⇤ Contraer')
     ),
     E('nav', { className: 'tabs' }, tabs.map(([id, label, icon]) => E('button', { key: id, onClick: () => navigate(id), className: `tab ${tab === id ? 'active' : ''}`, title: label }, E('span', { className: 'tab-icon' }, icon), E('span', { className: 'tab-label' }, label)))),
     E('div', { className: 'side-profile-actions' },
@@ -346,7 +351,7 @@ function FeedbackControlModule({ items, setItems, championship, setTab }) {
   );
 }
 
-function TopBar({ championship, auth, setTab, uxMode, setUxMode }) {
+function TopBar({ championship, auth, setTab, uxMode }) {
   const modeName = uxMode === 'pro' ? 'Interface ProV' : uxMode === 'guided' ? 'Interface IA' : 'Interface Clásica';
   return E('div', { className: `topbar ${uxMode === 'guided' ? 'guided-topbar' : ''} ${uxMode === 'pro' ? 'pro-topbar' : ''}` },
     E('div', null,
@@ -361,7 +366,7 @@ function TopBar({ championship, auth, setTab, uxMode, setUxMode }) {
       )
     ),
     E('div', { className: 'topbar-user' },
-      E(ModeButtons, { uxMode, setUxMode, compact: true }),
+      E(PlatformLogo, { height: 48 }),
       E('span', { className: 'notification-pill' }, '3'),
       E('div', { className: 'avatar placeholder' }, (auth?.profile?.full_name || auth?.user?.email || 'CC').slice(0, 2).toUpperCase()),
       E('div', null, E('b', null, auth?.profile?.full_name || auth?.user?.email || 'Usuario'), E('div', { className: 'small' }, `${roleLabel(auth?.profile?.role || 'USER')} · ${auth?.profile?.email || auth?.user?.email || ''}`)),
@@ -808,7 +813,7 @@ function GrandDashboard({ championships, players, openChampionshipDashboard, ope
         E('h1', null, 'Grand Dashboard'),
         E('p', null, 'Vista ejecutiva acumulada de todos los campeonatos, jugadores, promedios, estados y participación registrada en la plataforma.')
       ),
-      E(ModeButtons, { uxMode: 'pro', setUxMode: () => {}, compact: false })
+      E(PlatformLogo, { height: 72 })
     ),
     E('div', { className: 'grid grid-6 pro-stat-strip' },
       E(Stat, { label: 'Campeonatos normales', value: normalRows.length }),
@@ -1180,6 +1185,19 @@ function AppShell({ auth }) {
     if (next !== 'pro' && ['grand', 'rankingHub'].includes(tab)) setTab('dashboard');
     try { localStorage.setItem(UX_MODE_KEY, next); } catch {}
   };
+  // Skin de marca: preferencia global del dispositivo, independiente del
+  // claro/oscuro. 'standard' (institucional, por defecto) o 'caromchamps'.
+  const [uiSkin, setUiSkinState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(UI_SKIN_KEY);
+      return ['standard', 'caromchamps'].includes(saved) ? saved : 'standard';
+    } catch { return 'standard'; }
+  });
+  const setUiSkin = (skin) => {
+    const next = ['standard', 'caromchamps'].includes(skin) ? skin : 'standard';
+    setUiSkinState(next);
+    try { localStorage.setItem(UI_SKIN_KEY, next); } catch {}
+  };
   const [syncStatus, setSyncStatus] = useState('Sincronización local activa');
   const [remoteReady, setRemoteReady] = useState(false);
   const didLoadRemote = useRef(false);
@@ -1453,10 +1471,10 @@ ${link}`, 'success');
   const isProWorkspaceTab = PRO_WORKSPACE_TAB_IDS.has(tab) || (isRankingChampionship && ['dashboard', 'setup', 'ranking', 'reports'].includes(tab));
   if (typeof window !== 'undefined') window.__CAROMCHAMPS_LANGUAGE__ = championship.global_settings?.language || 'es';
 
-  return E('div', { className: `app-shell theme-${uiTheme} ${menuCollapsed ? 'menu-collapsed' : ''} ux-mode-${uxMode}` },
-    E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth, uxMode, setUxMode, userRole }),
+  return E('div', { className: `app-shell theme-${uiTheme} skin-${uiSkin} ${menuCollapsed ? 'menu-collapsed' : ''} ux-mode-${uxMode}` },
+    E(Header, { championship, tab, setTab, collapsed: menuCollapsed, setCollapsed: setMenuCollapsed, auth, uxMode, userRole }),
     E('main', { className: 'main' },
-      E(TopBar, { championship, auth, setTab, uxMode, setUxMode }),
+      E(TopBar, { championship, auth, setTab, uxMode }),
       uxMode === 'guided' ? E(UxContextPanel, { championship, championships, tab, setTab }) : null,
       uxMode === 'pro' && isProWorkspaceTab ? E(ProWorkspaceTabs, { tab, setTab, championship, userRole }) : null,
       !isRankingChampionship && !(uxMode === 'pro' && !isProWorkspaceTab) ? E(Card, null,
@@ -1485,7 +1503,7 @@ ${link}`, 'success');
       !protectedTab && tab === 'ranking' && E(RankingModule, { championship, championships, players, openChampionshipTab: loadChampionship }),
       !protectedTab && tab === 'registrations' && E(RegistrationModule, { championship, setChampionship, players, setPlayers, registrations: registrationRequests, setRegistrations: setRegistrationRequests, auth, audit }),
       !protectedTab && tab === 'users' && E(UserManagementModule, { users: appUsers, setUsers: setAppUsers, auth, audit }),
-      !protectedTab && tab === 'config' && E(ConfigurationModule, { championship, setChampionship }),
+      !protectedTab && tab === 'config' && E(ConfigurationModule, { championship, setChampionship, uiSkin, setUiSkin, uxMode, setUxMode }),
       !protectedTab && tab === 'admin' && E(MaintenanceModule, { championship, setChampionship }),
       !protectedTab && tab === 'officials' && E(OfficialsModule, { championship, setChampionship, players, matches }),
       !protectedTab && tab === 'close' && E(CloseTournamentModule, { championship, setChampionship, players, setPlayers, matches, setMatches, seeds, audit }),

@@ -1,0 +1,295 @@
+/* ============================================================
+   Skin de marca "CaromChamps — Precision Blue"
+   ------------------------------------------------------------
+   Eje independiente de claro/oscuro (theme-light / theme-dark) y
+   del modo de interfaz (ux-mode-*). Se activa con la clase
+   .skin-caromchamps en .app-shell (y en .auth-page para el login).
+   Todo está scopeado bajo .skin-caromchamps: si la clase no está,
+   el tema Estándar queda EXACTAMENTE como antes.
+
+   Paleta base (referencia de marca):
+     Azul mesa      #245CE8   Azul profundo  #050819
+     Rojo bola      #C80F1D   Blanco bola    #F4F6EA
+     Amarillo bola  #F5C116   Gris técnico   #B3B0AE
+
+   Este archivo se importa DESPUÉS de theme.css, y los selectores
+   .skin-caromchamps.theme-* tienen mayor especificidad que los
+   .theme-* base, por lo que ganan al redefinir los tokens --color-*.
+   ============================================================ */
+
+/* ---------- 1. Tokens: variante CLARA ---------- */
+.skin-caromchamps.theme-light {
+  --color-brand-primary: #245CE8;          /* Azul mesa */
+  --color-brand-secondary: #050819;        /* Azul profundo */
+  --color-app-bg: #EEF2FB;                 /* Azul muy claro */
+  --color-surface: #FFFFFF;                /* Blanco puro */
+  --color-surface-alt: #F4F6EA;            /* Blanco marfil */
+  --color-border: #D5DEEC;                 /* Gris azulado claro */
+  --color-text-main: #0A1230;              /* Casi azul profundo */
+  --color-text-muted: #5A6472;             /* Gris técnico legible */
+  --color-accent: #245CE8;                 /* Azul mesa */
+  --color-highlight: #DCE6FD;              /* Azul claro */
+  --color-highlight-text: #1B3FA8;         /* Azul mesa oscuro */
+  --color-success: #1F9D57;                /* Verde deportivo */
+  --color-warning: #B9810A;                /* Ámbar legible (texto) */
+  --color-danger: #C80F1D;                 /* Rojo bola */
+  --color-table-header: #E4ECFB;           /* Azul muy claro */
+  --color-table-row: #FFFFFF;
+  --color-table-row-alt: #F6F8F1;          /* Marfil tenue */
+  --color-classified-bg: #DCE6FD;          /* Azul claro */
+  --color-finalized-bg: #E9EEFA;           /* Azul nieve */
+  --color-score: #245CE8;                  /* Azul mesa */
+  --color-points: #B9810A;                 /* Ámbar */
+
+  --color-accent-dark: #1B49B8;            /* Azul mesa oscuro */
+  --color-border-secondary: #C7D0DE;
+  --color-text-secondary: #3A4458;
+  --color-input-text: var(--color-text-main);
+  --color-table-header-text: var(--color-text-main);
+  --color-bracket-card-bg: var(--color-surface);
+  --color-bracket-card-text: var(--color-text-main);
+  --color-bracket-loser-text: var(--color-text-muted);
+  --color-bracket-connector: var(--color-accent);
+
+  --cc-yellow: #F5C116;                    /* Amarillo bola (fills/acentos) */
+  --cc-red: #C80F1D;                       /* Rojo bola */
+  --cc-deep: #050819;                      /* Azul profundo */
+  --cc-table: #245CE8;                     /* Azul mesa */
+  --cc-header-grad: linear-gradient(135deg, #245CE8 0%, #1230A0 55%, #050819 100%);
+  --cc-shadow: 0 10px 30px rgba(5, 8, 25, 0.10);
+}
+
+/* ---------- 2. Tokens: variante OSCURA (premium azul profundo) ---------- */
+.skin-caromchamps.theme-dark {
+  --color-brand-primary: #3B6BF0;          /* Azul mesa brillante */
+  --color-brand-secondary: #050819;        /* Azul profundo */
+  --color-app-bg: #050819;                 /* Azul profundo (paño nocturno) */
+  --color-surface: #0B1430;                /* Navy superficie */
+  --color-surface-alt: #111B3D;            /* Navy alterno */
+  --color-border: #25325C;                 /* Azul grafito */
+  --color-text-main: #F4F6EA;              /* Blanco marfil */
+  --color-text-muted: #97A3C2;             /* Gris azulado */
+  --color-accent: #3B6BF0;                 /* Azul mesa brillante */
+  --color-highlight: #16245C;              /* Azul profundo medio */
+  --color-highlight-text: #C7D6FF;         /* Azul muy claro */
+  --color-success: #2BBE6E;                /* Verde brillante */
+  --color-warning: #F5C116;                /* Amarillo bola */
+  --color-danger: #E2384A;                 /* Rojo brillante */
+  --color-table-header: #111B3D;
+  --color-table-row: #0A1230;
+  --color-table-row-alt: #0E1838;
+  --color-classified-bg: #16245C;
+  --color-finalized-bg: #111E48;
+  --color-score: #6B93F7;                  /* Azul mesa claro */
+  --color-points: #F5C116;                 /* Amarillo bola */
+
+  --color-accent-dark: #245CE8;
+  --color-border-secondary: #2C3A66;
+  --color-text-secondary: #C2CBE0;
+  --color-input-text: var(--color-text-main);
+  --color-table-header-text: var(--color-text-main);
+  --color-bracket-card-bg: var(--color-surface);
+  --color-bracket-card-text: var(--color-text-main);
+  --color-bracket-loser-text: var(--color-text-muted);
+  --color-bracket-connector: var(--color-accent);
+
+  --cc-yellow: #F5C116;
+  --cc-red: #E2384A;
+  --cc-deep: #050819;
+  --cc-table: #3B6BF0;
+  --cc-header-grad: linear-gradient(135deg, #0B1F5C 0%, #081138 55%, #050819 100%);
+  --cc-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- 3. Tipografía (Montserrat títulos / Inter interfaz) ---------- */
+.skin-caromchamps,
+.skin-caromchamps .input,
+.skin-caromchamps select.input,
+.skin-caromchamps textarea.input,
+.skin-caromchamps button {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.skin-caromchamps h1,
+.skin-caromchamps h2,
+.skin-caromchamps h3,
+.skin-caromchamps .header-title,
+.skin-caromchamps .section-title h2,
+.skin-caromchamps .brand-title,
+.skin-caromchamps .stat-value {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+/* Números y estadísticas con cifras tabulares para alinear tablas/marcadores. */
+.skin-caromchamps .stat-value,
+.skin-caromchamps td,
+.skin-caromchamps .bracket-score,
+.skin-caromchamps .agenda-score-cell,
+.skin-caromchamps .avg-cell,
+.skin-caromchamps .points-cell {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* ---------- 4. Estilo gráfico (superficies, sombras, bordes) ---------- */
+.skin-caromchamps .card,
+.skin-caromchamps .round-card,
+.skin-caromchamps .report-standings-card,
+.skin-caromchamps .bracket-premium-panel,
+.skin-caromchamps .bracket-tabular-panel,
+.skin-caromchamps .group-agenda-wrap {
+  border-radius: 18px !important;
+  box-shadow: var(--cc-shadow) !important;
+}
+.skin-caromchamps .card {
+  border: 1px solid color-mix(in srgb, var(--color-border) 75%, transparent) !important;
+}
+
+/* Header con degradado inspirado en el paño + azul profundo. */
+.skin-caromchamps .header {
+  background: var(--cc-header-grad) !important;
+  border-color: color-mix(in srgb, var(--cc-deep) 60%, transparent) !important;
+  color: #F4F6EA !important;
+}
+.skin-caromchamps .header .brand-title,
+.skin-caromchamps .header .brand-subtitle,
+.skin-caromchamps .header .brand-secondary span,
+.skin-caromchamps .header .guided-nav-group-title b,
+.skin-caromchamps .header .guided-nav-group-title span {
+  color: #F4F6EA !important;
+}
+.skin-caromchamps .header .brand-title {
+  letter-spacing: -0.02em;
+}
+/* Tabs del header sobre el degradado. */
+.skin-caromchamps .header .tab {
+  color: color-mix(in srgb, #F4F6EA 82%, transparent) !important;
+}
+.skin-caromchamps .header .tab:hover {
+  background: rgba(244, 246, 234, 0.12) !important;
+  color: #FFFFFF !important;
+}
+.skin-caromchamps .header .tab.active {
+  background: var(--cc-yellow) !important;
+  border-color: var(--cc-yellow) !important;
+  color: #050819 !important;
+}
+
+/* ---------- 5. Botones ---------- */
+/* Acción principal: azul mesa, texto blanco. */
+.skin-caromchamps .btn.primary,
+.skin-caromchamps .tab.active {
+  background: var(--color-accent) !important;
+  border-color: var(--color-accent) !important;
+  color: #FFFFFF !important;
+}
+/* Acción destacada / secundaria: amarillo bola, texto azul profundo. */
+.skin-caromchamps .btn.warning {
+  background: var(--cc-yellow) !important;
+  border-color: var(--cc-yellow) !important;
+  color: #050819 !important;
+  font-weight: 700 !important;
+}
+/* Éxito y peligro (alertas, ganadores, eliminaciones). */
+.skin-caromchamps .btn.success {
+  background: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  color: #FFFFFF !important;
+}
+.skin-caromchamps .btn.danger {
+  background: var(--cc-red) !important;
+  border-color: var(--cc-red) !important;
+  color: #FFFFFF !important;
+}
+.skin-caromchamps .btn {
+  border-radius: 12px !important;
+}
+
+/* ---------- 6. Acentos semánticos de marca ---------- */
+/* Foco de inputs con azul mesa. */
+.skin-caromchamps .input:focus,
+.skin-caromchamps select.input:focus,
+.skin-caromchamps textarea.input:focus {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent) !important;
+  outline: none !important;
+}
+.skin-caromchamps .report-print-check input,
+.skin-caromchamps input[type="checkbox"],
+.skin-caromchamps input[type="radio"] {
+  accent-color: var(--color-accent);
+}
+/* Badge de ganador / clasificado con energía de marca. */
+.skin-caromchamps .badge.success {
+  background: color-mix(in srgb, var(--color-success) 16%, transparent) !important;
+  color: var(--color-success) !important;
+}
+
+/* ---------- 7. Logo CaromChamps (lockup oficial) ---------- */
+/* El logo oficial se renderiza siempre en el header; por defecto está oculto
+   y solo aparece bajo el skin, reemplazando al logo institucional JPG y al
+   wordmark de texto (el logo ya incluye "CaromChamps"). Va sobre un chip
+   blanco para verse nítido contra el degradado del header. */
+.cc-brand-logo { display: none; }
+.skin-caromchamps .brand-logo-main { display: none !important; }
+/* El logo ya trae el wordmark "CaromChamps"; se oculta el texto redundante,
+   pero se conserva el subtítulo (Interface ProV/IA/Clásica) como contexto. */
+.skin-caromchamps .brand-title { display: none !important; }
+.skin-caromchamps .cc-brand-logo {
+  display: block;
+  height: 50px;
+  width: auto;
+  flex: 0 0 auto;
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 5px 10px;
+  box-shadow: 0 5px 14px rgba(5, 8, 25, 0.22);
+}
+.skin-caromchamps .brand-secondary img {
+  border-radius: 6px;
+  background: rgba(244, 246, 234, 0.92);
+  padding: 2px;
+}
+
+/* ---------- 8. Login (auth) con identidad de marca ---------- */
+/* Héroe izquierdo: overlay con el azul de marca (profundo -> mesa). */
+.skin-caromchamps.auth-page .auth-left-overlay {
+  background: linear-gradient(90deg, rgba(5, 8, 25, 0.94), rgba(36, 92, 232, 0.55) 54%, rgba(18, 48, 160, 0.22)) !important;
+}
+/* Logo oficial sobre tarjeta blanca, nítido sobre el héroe azul. */
+.skin-caromchamps.auth-page .auth-brand-logo-card {
+  display: inline-flex;
+  align-self: flex-start;
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 16px 20px;
+  box-shadow: 0 16px 44px rgba(5, 8, 25, 0.40);
+}
+.skin-caromchamps.auth-page .auth-brand-logo-card img {
+  display: block;
+  height: 96px;
+  width: auto;
+}
+.skin-caromchamps.auth-page .auth-hero-copy p,
+.skin-caromchamps.auth-page .auth-hero-tagline {
+  margin-top: 22px;
+}
+/* Tipografía y acentos de marca en el panel del formulario. */
+.skin-caromchamps.auth-page {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.skin-caromchamps.auth-page .auth-right-panel h2,
+.skin-caromchamps.auth-page .auth-hero-copy p {
+  font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+}
+.skin-caromchamps.auth-page .btn.success {
+  background: #245CE8 !important;
+  border-color: #245CE8 !important;
+  color: #FFFFFF !important;
+}
+.skin-caromchamps.auth-page .input:focus,
+.skin-caromchamps.auth-page select.input:focus {
+  border-color: #245CE8 !important;
+  box-shadow: 0 0 0 3px rgba(36, 92, 232, 0.22) !important;
+  outline: none !important;
+}
