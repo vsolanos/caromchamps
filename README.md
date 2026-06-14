@@ -4,7 +4,7 @@ CaromChamps es una plataforma web React/Vite para la gestión integral de campeo
 
 ## Estado actual
 
-- Versión declarada en `package.json`: `7.3.0`.
+- Versión declarada en `package.json`: `7.5.0`.
 - Rama de trabajo esperada: `main`.
 - Aplicación: SPA React 18 + Vite 5.
 - Publicación web: Cloudflare Pages, proyecto `caromchampsapp`.
@@ -13,14 +13,12 @@ CaromChamps es una plataforma web React/Vite para la gestión integral de campeo
 - Interface predeterminada: ProV.
 - Interfaces disponibles: ProV, IA y Clásica.
 
-## Cambios recientes v7.3.0
+## Cambios recientes v7.5.0
 
-- Seguridad: el cliente ya no asigna roles; la base de datos protege la columna `role` mediante trigger y RLS (ejecutar `docs/supabase_migration_v7_3.sql` en Supabase).
-- Sincronización con detección de conflictos: si otra sesión o dispositivo guardó después, no se sobrescribe la nube y se avisa al usuario.
-- Suite de 50 tests unitarios (Vitest) para el motor deportivo `lib/tournament.js`.
-- ESLint + Prettier configurados; `check:syntax` reemplazado por `npm run lint`.
-- CI con GitHub Actions: lint, tests y build en cada push/PR a `main`.
-- Notificaciones toast y confirmaciones asíncronas propias en lugar de `alert`/`confirm` nativos (App.js migrado; módulos restantes gradual).
+- Tema de marca **CaromChamps "Precision Blue"** como skin opcional (claro y oscuro), con logo oficial, isotipo, tipografía Montserrat/Inter y estilo gráfico. Seleccionable en Configuración; `Estándar` sigue por defecto. Aislado en `src/styles/skin-caromchamps.css`.
+- Selección de interfaz (ProV / IA / Clásica) movida a un combo box en Configuración (ProV por defecto); el isotipo de marca reemplaza los selectores inline del TopBar y el hero del Grand Dashboard.
+- Corrección de pérdida de datos: `saveUserAppState` ya no sobrescribe a ciegas la copia remota de `user_app_states` cuando no se cargó primero en la sesión (evita que el estado por defecto pise los datos del usuario tras un error de lectura).
+- v7.4.0: PII (cédula, correo, teléfono) fuera del payload público de inscripciones; la PII vive en `private_payload` (sin acceso anónimo) y el reconocimiento usa la RPC `match_public_registration_player` (ejecutar `docs/supabase_migration_v7_4.sql`).
 - Validado con `npm run check` (lint + test + build).
 
 ## Módulos principales
@@ -297,10 +295,12 @@ src/lib/print.js                   Motor de impresión/PDF
 src/components/*                   Componentes compartidos
 src/modules/*                      Módulos operativos
 src/styles.css                     Estilos globales y capas por versión
-src/styles/theme.css               Tokens de tema
+src/styles/theme.css               Tokens de tema (Estándar)
+src/styles/skin-caromchamps.css    Tokens y estilo del tema CaromChamps (v7.5)
 src/lib/tournament.test.js         Tests unitarios del motor deportivo
 docs/supabase_schema_v5.sql        SQL vigente Supabase
 docs/supabase_migration_v7_3.sql   Migración de seguridad de roles y RLS (v7.3)
+docs/supabase_migration_v7_4.sql   Migración PII fuera del payload público (v7.4)
 docs/SUPABASE_SETUP_v5.md          Guía Supabase
 .github/workflows/ci.yml           CI: lint + tests + build
 public/_redirects                  Fallback SPA Cloudflare Pages
@@ -308,6 +308,18 @@ public/_headers                    Headers de cache Cloudflare Pages
 ```
 
 ## Historial de versiones
+
+### v7.5.0
+
+- Tema CaromChamps "Precision Blue" (skin opcional, claro+oscuro) con logo, isotipo, tipografía Montserrat/Inter y estilo gráfico; selector en Configuración, `Estándar` por defecto. Aislado en `src/styles/skin-caromchamps.css`.
+- Selección de interfaz movida a combo box en Configuración (ProV por defecto); isotipo de marca en TopBar y hero en lugar de los pills inline.
+- Fix de pérdida de datos en `saveUserAppState`: no sobrescribe la copia remota si no se cargó primero en la sesión (evita que el estado por defecto pise los datos del usuario tras un error de lectura de la nube).
+- `package.json` actualizado a `7.5.0`.
+
+### v7.4.0
+
+- PII fuera del payload público de inscripciones: `id_number`, `id_type`, `email` y `phone_e164` ya no se publican; viven en `private_payload` (sin SELECT para anon) y el reconocimiento por documento/correo usa la RPC `match_public_registration_player` (security definer). Ejecutar `docs/supabase_migration_v7_4.sql`.
+- `package.json` actualizado a `7.4.0`.
 
 ### v7.3.0
 
